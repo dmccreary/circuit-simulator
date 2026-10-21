@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An interactive intelligent textbook that teaches electronic circuit analysis through hands-on circuit simulations.">
+        <meta name="description" content="A gallery of 1 interactive MicroSims — self-contained, browser-based visualizations you can explore directly.">
       
       
         <meta name="author" content="Dan McCreary">
@@ -18,22 +18,22 @@
         <link rel="prev" href="../learning-graph/">
       
       
-        <link rel="next" href="../license/">
+        <link rel="next" href="simulator-architecture/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>List of MicroSims - Circuit Simulator</title>
+        <title>MicroSims - Circuit Simulator</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              List of MicroSims
+              MicroSims
             
           </span>
         </div>
@@ -203,6 +203,8 @@
         <div class="md-main__inner md-grid">
           
             
+              
+                
               
               <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
                 <div class="md-sidebar__scrollwrap">
@@ -384,6 +386,74 @@
           
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../design/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Design
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
     
     
     
@@ -494,6 +564,8 @@
           
         
       
+        
+      
     
     
     
@@ -504,7 +576,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -525,10 +597,15 @@
 
             </a>
             
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_9" id="__nav_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -538,6 +615,42 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="simulator-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Circuit Simulator Architecture
+  
+
+    
+  </span>
+  
+  
+    
+  
+  
+    <span class="md-status md-status--built" title="Built — implementation complete, awaiting review">
+    </span>
+  
+
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -609,7 +722,9 @@
             
             
               
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" hidden>
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -631,6 +746,8 @@
             <div class="md-content" data-md-component="content">
               
                 
+
+  
 
 
 
@@ -681,6 +798,8 @@
               <article class="md-content__inner md-typeset">
                 
                   
+  
+
 
 
   
@@ -693,13 +812,12 @@
 
 
 <h1 id="microsims">MicroSims<a class="headerlink" href="#microsims" title="Permanent link">&para;</a></h1>
-<p>MicroSims are small, interactive educational simulations — each one focused on
-a single concept. They live under <code>docs/sims/&lt;sim-name&gt;/</code> and are embedded
-into chapters via iframes.</p>
-<p>New MicroSims can be created with the <code>microsim-generator</code> skill, which routes
-to the appropriate library (p5.js, Chart.js, vis-network, Mermaid, Leaflet,
-Plotly, Venn.js).</p>
-<!-- The MicroSim catalog is built up as new sims are added. -->
+<p>This book includes <strong>1 interactive MicroSims</strong> — self-contained, browser-based visualizations you can explore directly. Click any thumbnail to open the MicroSim.</p>
+<!-- This gallery is generated by generate-sims-index.py — edits here will be overwritten. -->
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin-top:1.5em;">
+  <a href="simulator-architecture/" title="Circuit Simulator Architecture" style="display:block;border:1px solid #e3e7ec;border-radius:8px;overflow:hidden;text-decoration:none;color:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.08);"><img src="simulator-architecture/simulator-architecture.png" alt="Circuit Simulator Architecture" loading="lazy" style="width:100%;aspect-ratio:16/10;object-fit:cover;background:#f5f7fa;display:block;border-bottom:1px solid #eee;"><span style="display:block;padding:9px 11px;font-size:0.85rem;font-weight:600;line-height:1.3;">Circuit Simulator Architecture</span></a>
+</div>
 
 
 
@@ -707,8 +825,13 @@ Plotly, Venn.js).</p>
 
 
 
+  
+  
 
 
+
+
+  
 
 
 
@@ -732,6 +855,8 @@ Plotly, Venn.js).</p>
   
     
       
+        
+      
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
@@ -752,13 +877,13 @@ Plotly, Venn.js).</p>
         
         
           
-          <a href="../license/" class="md-footer__link md-footer__link--next" aria-label="Next: License">
+          <a href="simulator-architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Circuit Simulator Architecture">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                License
+                Circuit Simulator Architecture
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -794,10 +919,10 @@ Plotly, Venn.js).</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.action.edit", "navigation.expand", "navigation.path", "navigation.prune", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.action.edit", "navigation.expand", "navigation.path", "navigation.prune", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

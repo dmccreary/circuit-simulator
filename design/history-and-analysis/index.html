@@ -1,0 +1,1804 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Design of the trace history store, scrubbing through time, chart measurements and math traces, and the analysis service for DC, frequency response, sweeps, and spectra.">
+      
+      
+        <meta name="author" content="Dan McCreary">
+      
+      
+        <link rel="canonical" href="https://dmccreary.github.io/circuit-simulator/design/history-and-analysis/">
+      
+      
+        <link rel="prev" href="../rendering/">
+      
+      
+        <link rel="next" href="../app-shell/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>History and Analyses Design - Circuit Simulator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../css/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#history-and-analyses" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Circuit Simulator" class="md-header__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Circuit Simulator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              History and Analyses Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Circuit Simulator" class="md-nav__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Circuit Simulator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../course-description/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Course Description
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../list-of-circuits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    List of Circuits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Design
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Simulator Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../simulation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../circuit-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Circuit Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering and Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History and Analyses
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History and Analyses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-where-each-kind-of-result-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Where each kind of result lives
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-history-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The history store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The history store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-storage-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Storage layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-summary-pyramid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The summary pyramid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-memory-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Memory budget
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-moving-through-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Moving through time
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-measurements-and-math-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Measurements and math traces
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Measurements and math traces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-measurement-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The measurement library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-math-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Math traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-tools-for-the-circuit-laws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Tools for the circuit laws
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Analyses
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Analyses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-where-analyses-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Where analyses run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-the-job-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 The job interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-how-each-analysis-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 How each analysis works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../app-shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Shell
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files-and-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files and Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding-lessons-xapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedding, Lessons, and xAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../chapters/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapters
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../learning-graph/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning Graph
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../sims/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MicroSims
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contact/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contact
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-where-each-kind-of-result-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Where each kind of result lives
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-history-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The history store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The history store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-storage-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Storage layout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-summary-pyramid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The summary pyramid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-memory-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Memory budget
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-moving-through-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Moving through time
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-measurements-and-math-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Measurements and math traces
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Measurements and math traces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-measurement-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The measurement library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-math-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Math traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-tools-for-the-circuit-laws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Tools for the circuit laws
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Analyses
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Analyses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-where-analyses-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Where analyses run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-the-job-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 The job interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-how-each-analysis-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 How each analysis works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Simulator Design
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dmccreary/circuit-simulator/blob/main/docs/design/history-and-analysis.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="history-and-analyses">History and Analyses<a class="headerlink" href="#history-and-analyses" title="Permanent link">&para;</a></h1>
+<p>This page covers what happens to results after the engine produces them:
+how traces are stored, how the student moves back through time, how
+measurements are computed, and how the analysis views (Section 14) run
+without disturbing the live simulation.</p>
+<h2 id="1-where-each-kind-of-result-lives">1. Where each kind of result lives<a class="headerlink" href="#1-where-each-kind-of-result-lives" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Where</th>
+<th>Precision</th>
+<th>How long</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Probed traces (and math traces)</td>
+<td>History Store, main thread</td>
+<td>Times <code>Float64</code>, values <code>Float32</code></td>
+<td>At least 100,000 samples per trace (PRF-04); default 500,000</td>
+</tr>
+<tr>
+<td>Full circuit state for scrubbing</td>
+<td>State ring, live worker (<a href="../simulation-engine/#74-the-full-state-history-ring">Engine §7.4</a>)</td>
+<td><code>Float32</code></td>
+<td>The most recent 20,000 steps (CHT-23)</td>
+</tr>
+<tr>
+<td>Ghost copies</td>
+<td>History Store</td>
+<td>Shared with the trace they copy</td>
+<td>Up to eight per trace (CHT-17)</td>
+</tr>
+<tr>
+<td>Event markers</td>
+<td>History Store event log</td>
+<td>—</td>
+<td>As long as the trace history</td>
+</tr>
+<tr>
+<td>Energy totals (PRB-20)</td>
+<td>Engine, accumulated each step</td>
+<td><code>Float64</code></td>
+<td>Since reset</td>
+</tr>
+<tr>
+<td>Analysis results</td>
+<td>Analysis Service results cache</td>
+<td><code>Float64</code></td>
+<td>Until the circuit changes, then kept as one ghost (ANL-12)</td>
+</tr>
+</tbody>
+</table>
+<p>Single precision is enough for drawing and for every chart measurement
+at the tolerances in Section 26 (about seven significant digits). The two
+quantities where rounding would accumulate over many steps — energy
+totals and running integrals — are computed in double precision.</p>
+<h2 id="2-the-history-store">2. The history store<a class="headerlink" href="#2-the-history-store" title="Permanent link">&para;</a></h2>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">HistoryStore</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="cm">/** Append one frame&#39;s samples (called by the Frame Bus). */</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nx">append</span><span class="p">(</span><span class="nx">frame</span><span class="o">:</span><span class="w"> </span><span class="kt">Frame</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="cm">/** A read-only view of a trace between two times, with its level-of-detail index. */</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nx">view</span><span class="p">(</span><span class="nx">trace</span><span class="o">:</span><span class="w"> </span><span class="kt">TraceId</span><span class="p">,</span><span class="w"> </span><span class="nx">t0</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">,</span><span class="w"> </span><span class="nx">t1</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">TraceView</span><span class="p">;</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="cm">/** Keep a copy of the visible or full trace as a ghost (CHT-17). Cheap: shares storage. */</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nx">keepGhost</span><span class="p">(</span><span class="nx">trace</span><span class="o">:</span><span class="w"> </span><span class="kt">TraceId</span><span class="p">,</span><span class="w"> </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="kt">MessageRef</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">GhostId</span><span class="p">;</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="cm">/** Events for markers on the time axis (CHT-24). */</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nx">events</span><span class="p">(</span><span class="nx">t0</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">,</span><span class="w"> </span><span class="nx">t1</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">SimEvent</span><span class="p">[];</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="cm">/** Discard history after a time (Restart from here, CHT-22) or all of it (Reset, SIM-03). */</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="nx">truncateAfter</span><span class="p">(</span><span class="nx">t</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="nx">clear</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="21-storage-layout">2.1 Storage layout<a class="headerlink" href="#21-storage-layout" title="Permanent link">&para;</a></h3>
+<p>All channels in a run share one <strong>time column</strong>, because the engine
+reports every channel at every step. Each column is stored as a list of
+fixed-size <strong>chunks</strong> of 4,096 samples. A chunk is mutable only while it
+is the newest; once full it never changes. That gives three cheap
+operations:</p>
+<ul>
+<li><strong>Appending</strong> writes into the newest chunk.</li>
+<li><strong>Ghosts</strong> keep references to existing chunks rather than copying them.</li>
+<li><strong>Dropping old history</strong> frees whole chunks from the front.</li>
+</ul>
+<h3 id="22-the-summary-pyramid">2.2 The summary pyramid<a class="headerlink" href="#22-the-summary-pyramid" title="Permanent link">&para;</a></h3>
+<p>Alongside each value column, the store keeps a pyramid of block
+summaries. Every block of 64 samples records its <strong>minimum, maximum,
+sum, and sum of squares</strong>; every 64 blocks are summarized again, and so
+on. The pyramid serves two clients:</p>
+<ul>
+<li>the <strong>Chart Renderer</strong> draws each pixel column from the minimum and
+  maximum at the right level, so spikes never disappear and drawing cost
+  depends on chart width, not sample count
+  (<a href="../rendering/#53-drawing-a-trace-fast">Rendering §5.3</a>);</li>
+<li>the <strong>Measurement Library</strong> computes minimum, maximum, peak-to-peak,
+  average, and RMS over any span from a handful of summaries plus the
+  raw samples at the two ends, so live measurements on a 500,000-sample
+  trace cost microseconds (CHT-30).</li>
+</ul>
+<p>Because time steps vary, sums used for averages are time-weighted (each
+sample weighted by its step), so an average is a true time average and
+not biased toward moments where the step was small.</p>
+<h3 id="23-memory-budget">2.3 Memory budget<a class="headerlink" href="#23-memory-budget" title="Permanent link">&para;</a></h3>
+<p>At the default limit of 500,000 samples per trace, 16 probes use about
+36 MB (32 MB of values plus 4 MB for the shared time column). When a trace passes its limit, the oldest chunks are dropped
+but their pyramid summaries are kept, so the chart can still draw the
+distant past at coarse detail. This is the answer proposed to
+<a href="../rendering/#6-open-questions">Rendering open question 1</a>; the author
+may prefer old history to drop off entirely.</p>
+<h2 id="3-moving-through-time">3. Moving through time<a class="headerlink" href="#3-moving-through-time" title="Permanent link">&para;</a></h2>
+<p>Scrubbing (CHT-22) touches every component, so it follows one path:</p>
+<ol>
+<li>The student drags the playhead or presses an arrow key. The chart sets
+   <code>ChartModel.playhead = t</code>.</li>
+<li>The app sends <code>getStateAt(t)</code> to the live worker. The reply arrives
+   within a frame and is published on the Frame Bus as a <strong>historical
+   frame</strong>, marked with its time.</li>
+<li>Every subscriber treats a historical frame exactly like a live one:
+   wire colors, dots, lamp brightness, charge marks, switch positions,
+   hover cards, pinned meters, and the Loop and Junction tools all show
+   that moment (PRN-04).</li>
+<li>If <code>t</code> is older than the state ring, the reply is "not available".
+   The chart still moves its readouts, and the schematic shows "Circuit
+   history not available this far back" (CHT-23).</li>
+<li><strong>Run</strong> resumes from the latest moment. <strong>Restart from here</strong> sends
+   <code>restartFrom(t)</code>; the worker restores the state at <code>t</code>, and the History
+   Store truncates everything after <code>t</code>.</li>
+</ol>
+<h2 id="4-measurements-and-math-traces">4. Measurements and math traces<a class="headerlink" href="#4-measurements-and-math-traces" title="Permanent link">&para;</a></h2>
+<h3 id="41-the-measurement-library">4.1 The measurement library<a class="headerlink" href="#41-the-measurement-library" title="Permanent link">&para;</a></h3>
+<p>Measurements are <strong>pure functions</strong> over a <code>TraceView</code> and a span, in
+their own package with no knowledge of the chart. The chart's
+measurement table, the cursor readouts, the multimeter's AC and DC
+readings, lesson checks (LES-06), and the parameter sweep's "measurement
+versus parameter" (ANL-18) all call the same functions.</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">Measurement</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">MeasurementId</span><span class="p">;</span><span class="w">                      </span><span class="c1">// &quot;rms&quot;, &quot;rise-time&quot;, &quot;time-constant&quot;, ...</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">needs</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;any&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;periodic&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;step&quot;</span><span class="p">;</span><span class="w">     </span><span class="c1">// CHT-31</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">compute</span><span class="p">(</span><span class="nx">v</span><span class="o">:</span><span class="w"> </span><span class="kt">TraceView</span><span class="p">,</span><span class="w"> </span><span class="nx">span</span><span class="o">:</span><span class="w"> </span><span class="kt">Span</span><span class="p">,</span><span class="w"> </span><span class="nx">opts</span><span class="o">:</span><span class="w"> </span><span class="kt">Options</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">Result</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="p">;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="kr">type</span><span class="w"> </span><span class="nx">Result</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">ok</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">;</span><span class="w"> </span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="kt">R</span><span class="p">;</span><span class="w"> </span><span class="nx">provenance</span><span class="o">:</span><span class="w"> </span><span class="kt">MessageRef</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// CHT-32: &quot;RMS over 3 whole periods from ...&quot;</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">ok</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="p">;</span><span class="w"> </span><span class="nx">reason</span><span class="o">:</span><span class="w"> </span><span class="kt">MessageRef</span><span class="w"> </span><span class="p">};</span><span class="w">               </span><span class="c1">// &quot;fewer than two periods visible&quot;</span>
+</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Value, minimum, maximum, peak-to-peak, average, RMS, AC RMS, area</td>
+<td>Summary pyramid (§2.2), time-weighted</td>
+</tr>
+<tr>
+<td>Frequency, period, duty cycle</td>
+<td>Rising crossings of the average (or a chosen level), located by linear interpolation between samples; whole periods only</td>
+</tr>
+<tr>
+<td>Rise time, fall time, overshoot, settling time</td>
+<td>Find the step's initial and final levels, then the crossing times of the chosen percentages</td>
+</tr>
+<tr>
+<td>Time constant</td>
+<td>Least-squares fit of an exponential to the step, reported with its fit quality</td>
+</tr>
+<tr>
+<td>Phase difference, gain</td>
+<td>Against a second trace, over whole periods of the first</td>
+</tr>
+<tr>
+<td>Slope at a cursor (CHT-27)</td>
+<td>Local derivative from the samples either side</td>
+</tr>
+<tr>
+<td>Cursor snap points (CHT-26)</td>
+<td>Peaks, valleys, zero crossings, edges, and the 63.2% point, found by the same crossing and extremum routines</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-math-traces">4.2 Math traces<a class="headerlink" href="#42-math-traces" title="Permanent link">&para;</a></h3>
+<p>A math trace (CHT-33) is defined by an expression such as <code>V1 − V2</code> or
+<code>integral(I1)</code>.</p>
+<ul>
+<li>The expression is parsed by a small, safe parser into a syntax tree.
+  It cannot run code (this matters because math traces travel inside
+  shared files and lesson files).</li>
+<li><strong>Units</strong> are derived by walking the tree with the <code>units</code> package's
+  dimensional algebra, so volts times amps is watts and <code>d/dt</code> of volts
+  is volts per second.</li>
+<li>Because every channel shares the same time column, evaluation is a
+  straight pass over aligned samples. Derivatives use the variable step;
+  integrals use the trapezoidal rule.</li>
+<li>Math traces are stored in the History Store like any other trace, so
+  they get the pyramid, ghosts, and measurements for free.</li>
+</ul>
+<h3 id="43-tools-for-the-circuit-laws">4.3 Tools for the circuit laws<a class="headerlink" href="#43-tools-for-the-circuit-laws" title="Permanent link">&para;</a></h3>
+<p>The Loop tool (PRB-16), the Junction tool (PRB-18), and the potential
+profile (PRB-17) request <strong>channels</strong> for the voltages and currents they
+need, like probes do, but they do not create traces or lanes. The energy
+panel (PRB-20) reads per-element energy totals that the engine
+accumulates in double precision each step, which is the only way to
+guarantee the 0.1% balance.</p>
+<h2 id="5-analyses">5. Analyses<a class="headerlink" href="#5-analyses" title="Permanent link">&para;</a></h2>
+<h3 id="51-where-analyses-run">5.1 Where analyses run<a class="headerlink" href="#51-where-analyses-run" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In the live worker, pausing the transient run</td>
+<td>Rejected. ANL-12 asks the frequency response to redraw within half a second while a slider moves C1, and the live animation must not hitch while it does.</td>
+</tr>
+<tr>
+<td><strong>In a separate analysis worker</strong></td>
+<td><strong>Chosen.</strong> It loads the same engine code, receives the same netlist, and runs jobs without touching the live simulation. It starts the first time an analysis tab opens and stops after a minute idle.</td>
+</tr>
+<tr>
+<td>A pool of analysis workers</td>
+<td>Deferred. Parameter sweeps are naturally parallel, so a pool sized to the processor count could speed them up; it can be added behind the same job interface.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-the-job-interface">5.2 The job interface<a class="headerlink" href="#52-the-job-interface" title="Permanent link">&para;</a></h3>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">AnalysisService</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nx">submit</span><span class="o">&lt;</span><span class="nx">J</span><span class="w"> </span><span class="k">extends</span><span class="w"> </span><span class="nx">AnalysisJob</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">job</span><span class="o">:</span><span class="w"> </span><span class="kt">J</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">JobHandle</span><span class="o">&lt;</span><span class="nx">ResultOf</span><span class="o">&lt;</span><span class="nx">J</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">JobHandle</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nx">progress</span><span class="o">:</span><span class="w"> </span><span class="kt">Observable</span><span class="o">&lt;</span><span class="kt">number</span><span class="o">&gt;</span><span class="p">;</span><span class="w">            </span><span class="c1">// 0 to 1, for long sweeps (ANL-20)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nx">partial</span><span class="o">:</span><span class="w"> </span><span class="kt">Observable</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="p">;</span><span class="w">                  </span><span class="c1">// partial results, kept if cancelled</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nx">result</span><span class="o">:</span><span class="w"> </span><span class="kt">Promise</span><span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="p">;</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nx">cancel</span><span class="p">()</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">}</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="kr">type</span><span class="w"> </span><span class="nx">AnalysisJob</span><span class="w"> </span><span class="o">=</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;dc&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="w"> </span><span class="p">}</span><span class="w">                                       </span><span class="c1">// ANL-03</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;snapshot&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">state</span><span class="o">:</span><span class="w"> </span><span class="kt">DisplayState</span><span class="w"> </span><span class="p">}</span><span class="w">            </span><span class="c1">// ANL-07</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;ac&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">input</span><span class="o">:</span><span class="w"> </span><span class="kt">Id</span><span class="p">;</span><span class="w"> </span><span class="nx">outputs</span><span class="o">:</span><span class="w"> </span><span class="kt">ChannelSpec</span><span class="p">[];</span><span class="w"> </span><span class="nx">freqs</span><span class="o">:</span><span class="w"> </span><span class="kt">FreqRange</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// ANL-08–13</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;phasor&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">frequency</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">}</span><span class="w">                </span><span class="c1">// ANL-16</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;sweep&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">param</span><span class="o">:</span><span class="w"> </span><span class="kt">ParamRef</span><span class="p">;</span><span class="w"> </span><span class="nx">values</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">[];</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">      </span><span class="nx">sweep</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;transient&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;measurement&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;dc&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">outer?</span><span class="o">:</span><span class="w"> </span><span class="kt">ParamSweep</span><span class="w"> </span><span class="p">}</span><span class="w">      </span><span class="c1">// ANL-17–19</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;spectrum&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">samples</span><span class="o">:</span><span class="w"> </span><span class="kt">TraceSlice</span><span class="p">;</span><span class="w"> </span><span class="nx">window</span><span class="o">:</span><span class="w"> </span><span class="kt">WindowShape</span><span class="w"> </span><span class="p">}</span><span class="w">         </span><span class="c1">// ANL-22–25</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;thevenin&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="kt">NodeRef</span><span class="p">;</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="kt">NodeRef</span><span class="p">;</span><span class="w"> </span><span class="nx">frequency?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">}</span><span class="w">  </span><span class="c1">// PRB-19</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;truthTable&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">netlist</span><span class="o">:</span><span class="w"> </span><span class="kt">Netlist</span><span class="p">;</span><span class="w"> </span><span class="nx">inputs</span><span class="o">:</span><span class="w"> </span><span class="kt">Id</span><span class="p">[];</span><span class="w"> </span><span class="nx">outputs</span><span class="o">:</span><span class="w"> </span><span class="kt">Id</span><span class="p">[]</span><span class="w"> </span><span class="p">};</span><span class="w"> </span><span class="c1">// DIG-10, LES-06</span>
+</span></code></pre></div>
+<p><strong>Stale jobs are cancelled.</strong> When the circuit changes while a frequency
+response is open, the app cancels the running AC job and submits a new
+one after a 100 ms pause in edits. The previous result is kept as a ghost
+(ANL-12).</p>
+<h3 id="53-how-each-analysis-works">5.3 How each analysis works<a class="headerlink" href="#53-how-each-analysis-works" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Analysis</th>
+<th>Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DC operating point</td>
+<td>The engine's DC routine (<a href="../simulation-engine/#8-starting-state-and-the-dc-operating-point">Engine §8</a>): capacitors open, inductors shorted, Newton with gmin and source stepping. Returns node and part tables and the power balance.</td>
+</tr>
+<tr>
+<td>Frequency response</td>
+<td>Find the DC operating point, ask every element for its small-signal stamps, then solve the complex-valued system once per frequency. The sparsity pattern is analyzed once and reused for all 300 frequencies of the default sweep. Markers (−3 dB points, peak, crossings; ANL-11) are found on the main thread from the result.</td>
+</tr>
+<tr>
+<td>Impedance</td>
+<td>The same, with a 1 A test source at the chosen port (ANL-13).</td>
+</tr>
+<tr>
+<td>Phasors</td>
+<td>One frequency of the same solve, returned as magnitudes and angles (ANL-16).</td>
+</tr>
+<tr>
+<td>Parameter sweep</td>
+<td>For each value, apply the parameter as a <code>setParams</code> override and run the requested routine: a transient run from reset for the chosen duration, a transient run followed by a measurement from the <a href="#41-the-measurement-library">measurement library</a>, or a DC solve.</td>
+</tr>
+<tr>
+<td>Spectrum</td>
+<td>Resample the variable-step trace onto a uniform grid by interpolation, apply the window (Hann by default), take a real FFT, and find the fundamental and harmonics for THD (ANL-24). The resolution is reported with the result (ANL-25).</td>
+</tr>
+<tr>
+<td>Thévenin and Norton</td>
+<td>Two solves at the chosen pair of nodes: open-circuit voltage, then the impedance seen with independent sources zeroed.</td>
+</tr>
+<tr>
+<td>Truth table</td>
+<td>Step a purely digital copy of the selection through every input combination with the event kernel. Also used by lesson test benches.</td>
+</tr>
+</tbody>
+</table>
+<p>Every result is shown in the chart renderer with a non-time horizontal
+axis, which gives every analysis cursors, hover readouts, ghosts, and
+export (ANL-01).</p>
+<h2 id="6-open-questions">6. Open questions<a class="headerlink" href="#6-open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Sweep cost.</strong> A transient-family sweep of 20 values on a large
+   circuit could take many seconds in one worker. Should the first
+   release include the worker pool (§5.1), or is a progress bar enough?</li>
+</ol>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../rendering/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Rendering and Animation">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Rendering and Animation
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../app-shell/" class="md-footer__link md-footer__link--next" aria-label="Next: Application Shell">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Application Shell
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Dan McCreary. Licensed under <a href="license/">CC BY-NC-SA 4.0</a> for non-commercial use.
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "content.action.edit", "navigation.expand", "navigation.path", "navigation.prune", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

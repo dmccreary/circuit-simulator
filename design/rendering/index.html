@@ -1,0 +1,1902 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Design of the schematic renderer, the current-dot animator, voltage coloring, and the time-series chart renderer.">
+      
+      
+        <meta name="author" content="Dan McCreary">
+      
+      
+        <link rel="canonical" href="https://dmccreary.github.io/circuit-simulator/design/rendering/">
+      
+      
+        <link rel="prev" href="../circuit-model/">
+      
+      
+        <link rel="next" href="../history-and-analysis/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Rendering and Animation Design - Circuit Simulator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../css/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rendering-and-animation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Circuit Simulator" class="md-header__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Circuit Simulator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Rendering and Animation Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Circuit Simulator" class="md-nav__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Circuit Simulator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../course-description/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Course Description
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../list-of-circuits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    List of Circuits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Design
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Simulator Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../simulation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../circuit-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Circuit Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering and Animation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering and Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-render-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The render scheduler
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-schematic-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The schematic renderer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The schematic renderer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-drawing-technology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Drawing technology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-drawing-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The drawing interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-view-transform-and-hit-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 View transform and hit testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-lifelike-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Lifelike view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-current-animator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The current animator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The current animator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-where-the-currents-come-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Where the currents come from
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-voltage-color-power-and-other-live-effects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Voltage color, power, and other live effects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-chart-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The chart renderer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. The chart renderer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-build-or-borrow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Build or borrow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-drawing-a-trace-fast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Drawing a trace fast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-sweep-and-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Sweep and trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-vertical-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Vertical scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-other-lane-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Other lane kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history-and-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History and Analyses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../app-shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Shell
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../files-and-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files and Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding-lessons-xapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedding, Lessons, and xAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../chapters/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapters
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../learning-graph/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning Graph
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../sims/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MicroSims
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contact/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contact
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-render-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The render scheduler
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-schematic-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The schematic renderer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The schematic renderer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-drawing-technology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Drawing technology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-the-drawing-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 The drawing interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-view-transform-and-hit-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 View transform and hit testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-lifelike-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Lifelike view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-current-animator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The current animator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The current animator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-where-the-currents-come-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Where the currents come from
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-voltage-color-power-and-other-live-effects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Voltage color, power, and other live effects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-chart-renderer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The chart renderer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. The chart renderer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-build-or-borrow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Build or borrow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-drawing-a-trace-fast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Drawing a trace fast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-sweep-and-trigger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Sweep and trigger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-vertical-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Vertical scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-other-lane-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Other lane kinds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Simulator Design
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dmccreary/circuit-simulator/blob/main/docs/design/rendering.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="rendering-and-animation">Rendering and Animation<a class="headerlink" href="#rendering-and-animation" title="Permanent link">&para;</a></h1>
+<p>Everything that moves on screen is drawn by three main-thread components
+that sit outside the React component tree: the <strong>Schematic Renderer</strong>,
+the <strong>Current Animator</strong>, and the <strong>Chart Renderer</strong>. They are fed by the
+<strong>Frame Bus</strong> (<a href="../simulation-engine/#7-the-worker-protocol">Engine §7</a>)
+and paced by one shared <strong>Render Scheduler</strong>.</p>
+<h2 id="1-the-render-scheduler">1. The render scheduler<a class="headerlink" href="#1-the-render-scheduler" title="Permanent link">&para;</a></h2>
+<p>One <code>requestAnimationFrame</code> loop serves every canvas in a simulator
+instance, so the schematic and the chart are always drawn from the same
+frame of data (PRN-04: time is shared).</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">RenderScheduler</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="cm">/** Mark part of the picture as needing a redraw on the next frame. */</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nx">invalidate</span><span class="p">(</span><span class="nx">what</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;grid&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;symbols&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;live&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;dots&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;overlay&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;chart&quot;</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="cm">/** True while anything is animating; the loop sleeps when this is false. */</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="k">readonly</span><span class="w"> </span><span class="nx">animating</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li><strong>The loop sleeps when nothing changes.</strong> Paused, with no pointer
+  activity and no dots moving, nothing is drawn. This matters for
+  laptops on battery and for pages with several embeds.</li>
+<li><strong>Off-screen embeds stop drawing.</strong> An <code>IntersectionObserver</code> and the
+  page-visibility event stop the loop and tell the worker to pause
+  (EMB-07).</li>
+<li><strong>Each layer redraws only when invalidated.</strong> A switch flip
+  invalidates <code>live</code> and <code>dots</code>; a pan invalidates everything; a hover
+  invalidates <code>overlay</code> only.</li>
+</ul>
+<h2 id="2-the-schematic-renderer">2. The schematic renderer<a class="headerlink" href="#2-the-schematic-renderer" title="Permanent link">&para;</a></h2>
+<h3 id="21-drawing-technology">2.1 Drawing technology<a class="headerlink" href="#21-drawing-technology" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>For</th>
+<th>Against</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SVG (DOM)</strong></td>
+<td>Crisp at any zoom; every part is an element, so hit testing and accessibility come cheaply</td>
+<td>Thousands of moving dots and per-frame color changes mean thousands of DOM updates per frame; falls well short of 30 fps at 150 parts (PRF-01)</td>
+<td>Rejected for live drawing; used for <strong>export</strong></td>
+</tr>
+<tr>
+<td><strong>Canvas 2D, layered</strong></td>
+<td>Fast for this scale; full control of drawing order; text and dashed lines are easy; works everywhere</td>
+<td>We write our own hit testing and accessibility layer</td>
+<td><strong>Chosen</strong></td>
+</tr>
+<tr>
+<td>WebGL (or WebGPU)</td>
+<td>Fastest for very large scenes</td>
+<td>Text, dashes, and anti-aliased thin lines are hard; much more code; older school laptops have weak drivers</td>
+<td>Rejected; not needed at 150–500 parts</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-layers">2.2 Layers<a class="headerlink" href="#22-layers" title="Permanent link">&para;</a></h3>
+<p>The schematic is drawn on stacked canvases, from back to front, plus one
+HTML layer on top:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Contents</th>
+<th>Redrawn when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Grid</td>
+<td>Faint dots (CAN-02), fading below 40% zoom (CAN-06)</td>
+<td>Pan, zoom, theme</td>
+</tr>
+<tr>
+<td>2. Symbols</td>
+<td>Part symbols, labels, values, annotations, junction dots, crossing hops (CAN-07–13)</td>
+<td>Document change, pan, zoom, symbol style</td>
+</tr>
+<tr>
+<td>3. Live</td>
+<td>Wire voltage colors, voltage gradients inside parts (ANI-12–13), power glow (ANI-16), lamp and LED glow (ANI-17), capacitor charge marks (ANI-18), switch contacts (ANI-21), logic colors (ANI-22)</td>
+<td>Every frame while running</td>
+</tr>
+<tr>
+<td>4. Dots</td>
+<td>Current dots, streaks, trickle shimmer, or static arrows (ANI-01–08, ACC-13)</td>
+<td>Every animation frame while dots move</td>
+</tr>
+<tr>
+<td>5. Overlay</td>
+<td>Selection, focus outline, hover node highlight (CAN-11), probe flags and leaders (PRB-09), tool previews (PRB-04), loop and junction tools (PRB-16, PRB-18), lesson spotlights (LES-09)</td>
+<td>Interaction, run state</td>
+</tr>
+<tr>
+<td>6. HTML</td>
+<td>Hover cards, pinned meters (CAN-19), in-place value editor (EDT-25), context menus</td>
+<td>Through React</td>
+</tr>
+</tbody>
+</table>
+<p>Symbols are drawn once per part type, orientation, and zoom level into a
+cached <code>Path2D</code>, so layer 2 is cheap to redraw. Layer 3 is the expensive
+one; it redraws wires with their colors every frame, which at 150 parts
+is a few thousand line segments, comfortably inside a frame budget.</p>
+<h3 id="23-the-drawing-interface">2.3 The drawing interface<a class="headerlink" href="#23-the-drawing-interface" title="Permanent link">&para;</a></h3>
+<p>Element views draw through a small interface, not directly on a canvas:</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">SymbolGraphics</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">moveTo</span><span class="p">(</span><span class="nx">p</span><span class="o">:</span><span class="w"> </span><span class="kt">Point</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span><span class="w"> </span><span class="nx">lineTo</span><span class="p">(</span><span class="nx">p</span><span class="o">:</span><span class="w"> </span><span class="kt">Point</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span><span class="w"> </span><span class="nx">arc</span><span class="p">(...)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">stroke</span><span class="p">(</span><span class="nx">style</span><span class="o">:</span><span class="w"> </span><span class="kt">StrokeToken</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span><span class="w"> </span><span class="nx">fill</span><span class="p">(</span><span class="nx">style</span><span class="o">:</span><span class="w"> </span><span class="kt">FillToken</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">text</span><span class="p">(</span><span class="nx">s</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">at</span><span class="o">:</span><span class="w"> </span><span class="kt">Point</span><span class="p">,</span><span class="w"> </span><span class="nx">style</span><span class="o">:</span><span class="w"> </span><span class="kt">TextToken</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">image</span><span class="p">(</span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="kt">SpriteName</span><span class="p">,</span><span class="w"> </span><span class="nx">box</span><span class="o">:</span><span class="w"> </span><span class="kt">Box</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="ow">void</span><span class="p">;</span><span class="w">     </span><span class="c1">// lifelike view (CAN-14)</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>There are two implementations: one that draws to a canvas and one that
+writes SVG elements. The second gives schematic export as SVG (FIL-11)
+and printing (FIL-12) from the same code that draws the screen. Styles
+are <strong>theme tokens</strong>, never raw colors, so every view follows the light,
+dark, and high-contrast themes (CAN-15).</p>
+<h3 id="24-view-transform-and-hit-testing">2.4 View transform and hit testing<a class="headerlink" href="#24-view-transform-and-hit-testing" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The <strong>view transform</strong> maps grid units to screen pixels (zoom 10–800%,
+  CAN-03) and is session state, except that it is saved in the file on
+  save (FIL-02).</li>
+<li><strong>Hit testing</strong> uses a spatial index (a uniform grid hash, rebuilt from
+  the compiled circuit) of every part's hit shape, every wire segment,
+  every probe flag, and every control region. On a coarse pointer, hit
+  shapes and terminals grow to at least 44 px on screen (RSP-13).</li>
+<li><strong>Labels and live values</strong> are placed by trying a few candidate
+  positions around each symbol and taking the first that does not
+  overlap anything already placed. Labels that cannot be placed at a
+  readable size are hidden and shown on hover (RSP-12, ANI-23).</li>
+</ul>
+<h3 id="25-lifelike-view">2.5 Lifelike view<a class="headerlink" href="#25-lifelike-view" title="Permanent link">&para;</a></h3>
+<p>The lifelike view (CAN-14) is a third symbol style handled by the same
+<code>ElementView.drawSymbol</code> call with <code>style = "lifelike"</code>. It draws sprites
+(bulbs, batteries, resistors with color bands computed from their value)
+instead of line art. Wires become curved leads, drawn by smoothing the
+same polyline. Animation, colors, probes, and hit testing do not change.</p>
+<h2 id="3-the-current-animator">3. The current animator<a class="headerlink" href="#3-the-current-animator" title="Permanent link">&para;</a></h2>
+<p>The animator owns one number per drawn segment: its <strong>phase</strong>, measured
+in units of dot spacing.</p>
+<h3 id="31-the-rule">3.1 The rule<a class="headerlink" href="#31-the-rule" title="Permanent link">&para;</a></h3>
+<p>Each animation frame, for every segment <em>s</em> carrying current <em>I</em>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>phase[s] += speed(I) × Δt_animation / spacing
+</span></code></pre></div>
+<p>and dots are drawn at distances <code>(i − frac(phase[s])) × spacing</code> along the
+segment, for every whole <em>i</em> that falls on it. Because spacing is constant
+(ANI-04) and speed is proportional to current in the default scale
+(ANI-03), the number of dots passing any point per second is exactly
+proportional to the current there. Kirchhoff's current law at a junction
+(ANI-05) therefore holds by construction, not by tuning.</p>
+<ul>
+<li><strong><code>speed(I)</code></strong> is <code>k × I</code> on the proportional scale, or a logarithmic
+  curve on the wide-range scale. The constant <code>k</code> comes from the Current
+  speed control (ANI-10). In <strong>Auto</strong>, <code>k</code> is chosen so the largest
+  visible current moves four grid units per second, and it is changed
+  only after the largest current has moved by more than ten times for a
+  full second.</li>
+<li><strong><code>Δt_animation</code></strong> is real elapsed time while running. It is <strong>never</strong>
+  scaled by the simulation speed (ANI-03).</li>
+<li><strong>While paused, stepping, or scrubbing</strong>, the phase is moved by the
+  simulated-time change instead, converted at the present speed setting.
+  Stepping forward advances the dots by what that step represents;
+  dragging the playhead back moves them back (ANI-09), so the student can
+  rock the animation around a moment.</li>
+<li><strong>Direction.</strong> Electron flow negates <em>I</em> and swaps the dot sprite
+  (ANI-07).</li>
+<li><strong>Limits.</strong> Below the trickle threshold the dots stay still and shimmer;
+  above the speed cap they are drawn at the cap as short streaks
+  (ANI-06).</li>
+<li><strong>Reduced motion.</strong> When reduced motion is on, the animator draws a
+  static arrow per segment, sized by the current, instead of dots
+  (ACC-13).</li>
+</ul>
+<h3 id="32-where-the-currents-come-from">3.2 Where the currents come from<a class="headerlink" href="#32-where-the-currents-come-from" title="Permanent link">&para;</a></h3>
+<p>Every frame carries the latest <strong>segment currents</strong>: one value per drawn
+wire segment and per path inside each part, computed by the engine from
+the solution with each element's <code>segmentCurrents</code>
+(<a href="../simulation-engine/#5-the-element-model-interface">Engine §5</a>). The
+compiler's segment table maps them to screen geometry. Currents inside
+wires are not otherwise known to MNA (a node is one voltage), so the
+engine finds each wire segment's current by walking the wire tree of each
+node from its leaves, summing the terminal currents that feed it. This is
+done once per frame for drawing, not once per step.</p>
+<h2 id="4-voltage-color-power-and-other-live-effects">4. Voltage color, power, and other live effects<a class="headerlink" href="#4-voltage-color-power-and-other-live-effects" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Voltage color</strong> maps each node's voltage through a lookup table for
+  the active scale (red–gray–green, or blue–gray–orange for color-blind
+  safety; ANI-12, ACC-12), one table per theme. The scale range follows
+  the largest voltages present, with the same expand-fast, shrink-slow
+  rule as the chart (ANI-14), unless the student fixes it.</li>
+<li><strong>Gradients inside parts</strong> use the two terminal colors (ANI-13).</li>
+<li><strong>Power view</strong> replaces the table with a warm scale for absorbing parts
+  and a cool one for delivering parts (ANI-16).</li>
+<li><strong>Flicker suppression</strong> (ACC-14). Any element whose drawn brightness or
+  color would change direction more than three times per real second is
+  drawn at its running average instead. The animator tracks this per
+  element with a short history of reversals.</li>
+<li><strong>Change highlights</strong> (ANI-26). After a value change, the renderer
+  compares each node voltage and segment current one simulated second
+  later with its value at the change, and briefly outlines those that
+  moved by more than 10%.</li>
+</ul>
+<h2 id="5-the-chart-renderer">5. The chart renderer<a class="headerlink" href="#5-the-chart-renderer" title="Permanent link">&para;</a></h2>
+<h3 id="51-build-or-borrow">5.1 Build or borrow<a class="headerlink" href="#51-build-or-borrow" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Plotly or Chart.js</strong></td>
+<td>Rejected. Large downloads (Plotly especially), and their models (datasets redrawn on update) are not built for 100,000 samples streaming at 60 fps. Lanes with a shared axis, a playhead driving the schematic, ghosts, triggers, and logic lanes would all fight the library.</td>
+</tr>
+<tr>
+<td><strong>uPlot</strong></td>
+<td>A strong candidate: small and very fast for time series. Rejected narrowly, because nearly every feature in Section 12 (lanes with two units, trigger modes, a draggable playhead, logic and bus lanes, X-Y view, lanes on the canvas, sketch predictions) would live in plug-ins that work around its model. We borrow its ideas: drawing min/max per pixel column and caching paths.</td>
+</tr>
+<tr>
+<td><strong>Custom Canvas 2D renderer</strong></td>
+<td><strong>Chosen.</strong> About as much code as uPlot plus the plug-ins, but shaped around this specification.</td>
+</tr>
+<tr>
+<td>WebGL plot library</td>
+<td>Rejected: not needed for 16 traces, and weaker text and dashes.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-structure">5.2 Structure<a class="headerlink" href="#52-structure" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Chart panel (React)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  Legend chips, lane titles, menus, measurement table      DOM, for accessibility and drag-and-drop
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  Plot area                                                 one canvas per lane, plus one for the time axis
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      reads  ChartModel (session state) and Lane[] (document)
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>      reads  History Store through its level-of-detail index
+</span></code></pre></div>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">ChartModel</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nb">window</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">start</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w"> </span><span class="nx">span</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="w"> </span><span class="p">};</span><span class="w">   </span><span class="c1">// CHT-07</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;roll&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;sweep&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;triggered&quot;</span><span class="p">;</span><span class="w">      </span><span class="c1">// CHT-08–10</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nx">trigger?</span><span class="o">:</span><span class="w"> </span><span class="kt">TriggerSpec</span><span class="p">;</span><span class="w">                     </span><span class="c1">// trace, level, direction, pre-trigger, auto/normal/single</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nx">live</span><span class="o">:</span><span class="w"> </span><span class="kt">boolean</span><span class="p">;</span><span class="w">                             </span><span class="c1">// false after the student pans back (CHT-21)</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nx">playhead?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w">                         </span><span class="c1">// set when paused (CHT-22)</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nx">cursors</span><span class="o">?:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">a</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w"> </span><span class="nx">b</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w"> </span><span class="nx">snap?</span><span class="o">:</span><span class="w"> </span><span class="kt">SnapMode</span><span class="w"> </span><span class="p">};</span><span class="w">   </span><span class="c1">// CHT-26</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">  </span><span class="nx">hover?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w">                            </span><span class="c1">// CHT-25</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="53-drawing-a-trace-fast">5.3 Drawing a trace fast<a class="headerlink" href="#53-drawing-a-trace-fast" title="Permanent link">&para;</a></h3>
+<p>The <a href="../history-and-analysis/#2-the-history-store">History Store</a> keeps,
+for each trace, a <strong>min/max pyramid</strong>: for every block of 64 samples its
+minimum and maximum, then for every 64 blocks, and so on. To draw a trace
+across <em>w</em> pixel columns, the renderer picks the coarsest pyramid level
+that still has at least one entry per column and draws a vertical line
+from minimum to maximum in each column (CHT-19, PRF-05). Short spikes can
+never vanish, and drawing cost depends on the width of the chart, not on
+the number of samples. When zoomed in far enough, it draws the raw
+samples and marks each one with a dot (CHT-16).</p>
+<h3 id="54-sweep-and-trigger">5.4 Sweep and trigger<a class="headerlink" href="#54-sweep-and-trigger" title="Permanent link">&para;</a></h3>
+<p>The <strong>roll</strong> mode simply draws the latest window. <strong>Sweep</strong> and
+<strong>triggered</strong> modes need a sweep start time. A small trigger detector
+watches the incoming samples of the trigger trace for a level crossing in
+the chosen direction and records crossing times. In Auto mode it supplies
+a start time after one window with no trigger; in Single mode it stops
+after one sweep and sets <code>live = false</code> (CHT-10).</p>
+<h3 id="55-vertical-scaling">5.5 Vertical scaling<a class="headerlink" href="#55-vertical-scaling" title="Permanent link">&para;</a></h3>
+<p>Each lane keeps an automatic range that <strong>expands at once</strong> when a trace
+leaves it and <strong>shrinks only</strong> after the traces have used less than a
+quarter of it for two real seconds, rounded to 1, 2, or 5 times a power
+of ten (CHT-12). Manual ranges lock the lane until Auto is pressed
+(CHT-13).</p>
+<h3 id="56-other-lane-kinds">5.6 Other lane kinds<a class="headerlink" href="#56-other-lane-kinds" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Lane kind</th>
+<th>Drawing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Analog</td>
+<td>Line per trace, optional second unit axis on the right (CHT-03)</td>
+</tr>
+<tr>
+<td>Logic</td>
+<td>Compact high/low line, red band for X, mid-level blue for Z (DIG-07)</td>
+</tr>
+<tr>
+<td>Bus</td>
+<td>Labelled value segments in binary, decimal, or hex (DIG-08)</td>
+</tr>
+<tr>
+<td>X-Y</td>
+<td>One trace against another, fading trail, bright current point that follows the playhead; optional brightness and color traces for Falstad's 2-D scopes (CHT-34)</td>
+</tr>
+<tr>
+<td>On canvas</td>
+<td>Any lane drawn into a box on the schematic's live layer, panning and zooming with it (CHT-35)</td>
+</tr>
+<tr>
+<td>Sketch</td>
+<td>A lesson's sketch prediction, drawn with the pointer in the lane's own units and shown dashed beside the real trace (LES-04, LES-05)</td>
+</tr>
+</tbody>
+</table>
+<p>All lane kinds share the same axis, cursor, and hover code. The chart in
+the analysis tabs (frequency, sweep, spectrum) uses the same renderer
+with a different horizontal axis (frequency or a part value instead of
+time), which is how every analysis gets cursors, hover readouts, ghosts,
+and export at once (ANL-01).</p>
+<h2 id="6-open-questions">6. Open questions<a class="headerlink" href="#6-open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Very long runs.</strong> The History Store bounds memory (see
+   <a href="../history-and-analysis/#2-the-history-store">History §2</a>); the
+   renderer copes with any length. Is it acceptable for the chart to show
+   coarser detail beyond the oldest full-resolution sample, or should old
+   history simply drop off?</li>
+</ol>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../circuit-model/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Circuit Model">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Circuit Model
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../history-and-analysis/" class="md-footer__link md-footer__link--next" aria-label="Next: History and Analyses">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                History and Analyses
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Dan McCreary. Licensed under <a href="license/">CC BY-NC-SA 4.0</a> for non-commercial use.
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "content.action.edit", "navigation.expand", "navigation.path", "navigation.prune", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

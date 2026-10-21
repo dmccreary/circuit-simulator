@@ -1,0 +1,2050 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="First-pass architecture for the browser-based circuit simulator — the major components, how they talk to each other, and why each key design option was chosen.">
+      
+      
+        <meta name="author" content="Dan McCreary">
+      
+      
+        <link rel="canonical" href="https://dmccreary.github.io/circuit-simulator/design/">
+      
+      
+        <link rel="prev" href="../specifications/">
+      
+      
+        <link rel="next" href="simulation-engine/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Circuit Simulator Design - Circuit Simulator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../css/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#circuit-simulator-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Circuit Simulator" class="md-header__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Circuit Simulator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Circuit Simulator Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Circuit Simulator" class="md-nav__button md-logo" aria-label="Circuit Simulator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Circuit Simulator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dmccreary/circuit-simulator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub Repo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../course-description/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Course Description
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../list-of-circuits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    List of Circuits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../specifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulator Design
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Simulator Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="simulation-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="circuit-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Circuit Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering and Animation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="history-and-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    History and Analyses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="app-shell/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Shell
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="files-and-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Files and Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="embedding-lessons-xapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedding, Lessons, and xAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../chapters/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chapters
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../learning-graph/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning Graph
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../sims/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MicroSims
+  
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contact/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contact
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pages-in-this-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pages in this design
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-design-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Design goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-architecture-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Architecture at a glance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Architecture at a glance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-the-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 The components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-how-a-change-flows-through-the-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 How a change flows through the system
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-three-kinds-of-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Three kinds of state
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-threads-and-timing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Threads and timing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Threads and timing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-where-the-simulation-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Where the simulation runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-the-two-clocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 The two clocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-workers-per-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Workers per page
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-technology-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Technology choices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Technology choices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-why-typescript-for-the-engine-not-webassembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Why TypeScript for the engine, not WebAssembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-why-react-with-react-aria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Why React with React Aria
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-code-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Code organization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Code organization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-where-the-built-app-lives-on-the-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Where the built app lives on the site
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-cross-cutting-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Cross-cutting concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Cross-cutting concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-errors-and-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Errors and diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-internationalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Internationalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-theming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Theming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Testing strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-open-questions-for-the-author" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Open questions for the author
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href=".." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Simulator Design
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/dmccreary/circuit-simulator/blob/main/docs/design/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="circuit-simulator-design">Circuit Simulator Design<a class="headerlink" href="#circuit-simulator-design" title="Permanent link">&para;</a></h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Status</td>
+<td>Design draft 1, for author review</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>2026-10-21</td>
+</tr>
+<tr>
+<td>Implements</td>
+<td><a href="../specifications/">Circuit Simulator Specification</a>, draft 1</td>
+</tr>
+<tr>
+<td>Focus of this pass</td>
+<td>Architectural components and the interfaces between them</td>
+</tr>
+</tbody>
+</table>
+<p>The <a href="../specifications/">specification</a> says <strong>what</strong> the simulator
+must do and deliberately says nothing about how. This document is the
+first answer to "how". It names the major components, draws the lines
+between them, defines the interfaces that cross those lines, and records
+why each significant option was chosen over its alternatives.</p>
+<p>It is a first pass. Data structures inside a component, file-by-file code
+layout, and visual design are left for later passes. Where this document
+cites a requirement, the identifier (such as SIM-07) refers to the
+specification.</p>
+<h2 id="1-pages-in-this-design">1. Pages in this design<a class="headerlink" href="#1-pages-in-this-design" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>This page</td>
+<td>Goals, the overall architecture, threads, data flow, repository layout, and the summary of decisions</td>
+</tr>
+<tr>
+<td><a href="simulation-engine/">Simulation Engine</a></td>
+<td>Numerical method, mixed-signal kernel, time stepping, the engine's command and output interfaces</td>
+</tr>
+<tr>
+<td><a href="circuit-model/">Circuit Model</a></td>
+<td>The circuit document, edits and undo, the netlist compiler, the element plug-in interface, subcircuits</td>
+</tr>
+<tr>
+<td><a href="rendering/">Rendering and Animation</a></td>
+<td>The schematic renderer, current dots, voltage color, and the time-series chart</td>
+</tr>
+<tr>
+<td><a href="history-and-analysis/">History and Analyses</a></td>
+<td>Time history, scrubbing, measurements, math traces, DC, frequency, sweep, and spectrum</td>
+</tr>
+<tr>
+<td><a href="app-shell/">Application Shell</a></td>
+<td>UI framework, layout and responsiveness, tools and input, accessibility, settings</td>
+</tr>
+<tr>
+<td><a href="files-and-persistence/">Files and Persistence</a></td>
+<td>The circuit file, share links, Falstad import, browser storage, offline operation</td>
+</tr>
+<tr>
+<td><a href="embedding-lessons-xapi/">Embedding, Lessons, and xAPI</a></td>
+<td>Embed parameters and modes, the host message bridge, the lesson engine, learning events</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-design-goals">2. Design goals<a class="headerlink" href="#2-design-goals" title="Permanent link">&para;</a></h2>
+<p>These goals come from the specification. When two design options both
+work, these settle the choice.</p>
+<ol>
+<li><strong>The animation never stutters.</strong> The schematic and chart must stay
+   smooth at 30–60 frames per second (PRF-01) and respond to a switch
+   within 100 ms (PRF-02), even while the solver is working hard.</li>
+<li><strong>The engine is testable without a browser.</strong> The 22 acceptance
+   circuits (Section 26) and the 366 Falstad examples (FIL-18) must run
+   as automated tests on every change, headless and fast.</li>
+<li><strong>One source of truth per kind of state.</strong> The circuit document, the
+   simulation state, and the user-interface state each have exactly one
+   owner. Everything else is a view or a copy that can be rebuilt.</li>
+<li><strong>Embeds are cheap.</strong> A chapter page may hold several embedded
+   simulators. Each must show its circuit within two seconds (PRF-03),
+   so code that a <code>view</code> or <code>run</code> embed never uses must not be loaded.</li>
+<li><strong>Static hosting only.</strong> The book is published to GitHub Pages with
+   <code>mkdocs gh-deploy</code>. There is no server, no custom HTTP headers, and no
+   database. Everything runs in the reader's browser.</li>
+<li><strong>Durable and open.</strong> Files are documented text, the app works offline,
+   and nothing depends on a service that could close (PRN-12).</li>
+</ol>
+<h2 id="3-architecture-at-a-glance">3. Architecture at a glance<a class="headerlink" href="#3-architecture-at-a-glance" title="Permanent link">&para;</a></h2>
+<p>The simulator is a single-page TypeScript application. It runs on two
+kinds of thread: the browser's <strong>main thread</strong>, which owns everything the
+reader sees and touches, and one or more <strong>web workers</strong>, which own the
+numerical work.</p>
+<iframe src="../sims/simulator-architecture/main.html" height="557px" width="100%" scrolling="no"></iframe>
+
+<p>Click any component in the diagram to see its role, what it owns, what it
+connects to, and the requirements it serves. Press <strong>Next step</strong> to trace
+the slider edit described in <a href="#32-how-a-change-flows-through-the-system">§3.2</a>
+through the system. Dashed arrows cross between threads.
+<a href="../sims/simulator-architecture/main.html">Open the diagram full screen</a>.</p>
+<h3 id="31-the-components">3.1 The components<a class="headerlink" href="#31-the-components" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Component</th>
+<th>Thread</th>
+<th>Owns</th>
+<th>Main requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="circuit-model/#2-the-circuit-document">Circuit Document</a></td>
+<td>Main</td>
+<td>Parts, wires, labels, probes, lanes, sliders, settings: everything saved in a file</td>
+<td>FIL-02, EDT-31</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="circuit-model/#3-edits-transactions-and-undo">Edit and Undo System</a></td>
+<td>Main</td>
+<td>The undo and redo stacks; turns gestures into transactions</td>
+<td>EDT-31–33, PRN-05</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="circuit-model/#4-the-netlist-compiler">Netlist Compiler</a></td>
+<td>Main</td>
+<td>Nothing persistent; turns geometry into nodes and a netlist</td>
+<td>CAN-10–12, EDT-14, EDT-39</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="circuit-model/#5-the-element-plug-in-interface">Element Library</a></td>
+<td>Both</td>
+<td>One plug-in per part type: descriptor, model, view</td>
+<td>Section 9</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="simulation-engine/">Simulation Engine</a></td>
+<td>Worker</td>
+<td>Matrix, solver, element state, simulated time, the full-state history ring</td>
+<td>Section 10, Section 17, CHT-23</td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="simulation-engine/#6-the-engine-host-and-run-loop">Engine Host</a></td>
+<td>Worker</td>
+<td>The run loop, speed control, frame batching</td>
+<td>SIM-01–11, PRF-09</td>
+</tr>
+<tr>
+<td>7</td>
+<td><a href="simulation-engine/#7-the-worker-protocol">Frame Bus</a></td>
+<td>Main</td>
+<td>Fan-out of each incoming frame to its subscribers</td>
+<td>PRN-04</td>
+</tr>
+<tr>
+<td>8</td>
+<td><a href="history-and-analysis/#2-the-history-store">History Store</a></td>
+<td>Main</td>
+<td>Probe traces at full resolution, ghosts, the event log</td>
+<td>CHT-17, CHT-24, PRF-04</td>
+</tr>
+<tr>
+<td>9</td>
+<td><a href="rendering/#2-the-schematic-renderer">Schematic Renderer</a></td>
+<td>Main</td>
+<td>Canvas layers, view transform, hit testing</td>
+<td>Section 6, Section 11</td>
+</tr>
+<tr>
+<td>10</td>
+<td><a href="rendering/#3-the-current-animator">Current Animator</a></td>
+<td>Main</td>
+<td>Dot phases along every wire and part</td>
+<td>ANI-01–10</td>
+</tr>
+<tr>
+<td>11</td>
+<td><a href="rendering/#5-the-chart-renderer">Chart Renderer</a></td>
+<td>Main</td>
+<td>Lanes, axes, traces, cursors, playhead</td>
+<td>Section 12</td>
+</tr>
+<tr>
+<td>12</td>
+<td><a href="history-and-analysis/#4-measurements-and-math-traces">Measurement Library</a></td>
+<td>Main</td>
+<td>Pure functions over trace data</td>
+<td>CHT-26–33</td>
+</tr>
+<tr>
+<td>13</td>
+<td><a href="history-and-analysis/#5-analyses">Analysis Service</a></td>
+<td>Analysis worker</td>
+<td>DC, AC, sweep, spectrum jobs</td>
+<td>Section 14</td>
+</tr>
+<tr>
+<td>14</td>
+<td><a href="app-shell/">Application Shell</a></td>
+<td>Main</td>
+<td>Layout, panels, menus, tools, focus, settings</td>
+<td>Sections 4, 5, 7, 8, 22, 24</td>
+</tr>
+<tr>
+<td>15</td>
+<td><a href="app-shell/#5-tools-and-input">Tool Controller</a></td>
+<td>Main</td>
+<td>The active tool and its state machine</td>
+<td>Sections 7, 8, 13</td>
+</tr>
+<tr>
+<td>16</td>
+<td><a href="files-and-persistence/#5-browser-storage">Persistence Service</a></td>
+<td>Main</td>
+<td>IndexedDB stores, autosave, recovery</td>
+<td>FIL-04–09, PRF-06</td>
+</tr>
+<tr>
+<td>17</td>
+<td><a href="files-and-persistence/#2-the-circuit-file">Format Codecs</a></td>
+<td>Main</td>
+<td>Native file, share link, Falstad text and XML</td>
+<td>FIL-01–03, FIL-14–19</td>
+</tr>
+<tr>
+<td>18</td>
+<td><a href="embedding-lessons-xapi/#3-the-host-bridge">Host Bridge</a></td>
+<td>Main</td>
+<td>Embed parameters, capabilities, host messages</td>
+<td>Section 19</td>
+</tr>
+<tr>
+<td>19</td>
+<td><a href="embedding-lessons-xapi/#4-the-lesson-engine">Lesson Engine</a></td>
+<td>Main</td>
+<td>Lesson state, step progression, checks</td>
+<td>Section 20</td>
+</tr>
+<tr>
+<td>20</td>
+<td><a href="embedding-lessons-xapi/#5-the-xapi-reporter">xAPI Reporter</a></td>
+<td>Main</td>
+<td>Statement building, throttling, queue</td>
+<td>Section 21</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-how-a-change-flows-through-the-system">3.2 How a change flows through the system<a class="headerlink" href="#32-how-a-change-flows-through-the-system" title="Permanent link">&para;</a></h3>
+<p>Following one edit end to end shows how the components fit together.
+The student drags a slider that changes R1 from 1 kΩ to 2 kΩ while the
+circuit runs:</p>
+<ol>
+<li>The <strong>Application Shell</strong> turns the slider drag into a gesture and
+   hands it to the <strong>Edit and Undo System</strong>, which opens a transaction.</li>
+<li>Each pointer move updates the <strong>Circuit Document</strong> inside that open
+   transaction. The document emits a <em>patch</em>: "R1.resistance = 1.37 kΩ".</li>
+<li>The <strong>Netlist Compiler</strong> classifies the patch. A value change does not
+   alter topology, so no recompile is needed. It forwards a
+   <code>setParam</code> command to the worker.</li>
+<li>The <strong>Engine Host</strong> applies the change before the next time step
+   (SIM-18), adds an event marker (SIM-20), and keeps running.</li>
+<li>Within about 16 ms the worker posts a <strong>frame</strong>: new samples for every
+   probe, the latest display state (node voltages and branch currents),
+   and the event.</li>
+<li>The <strong>Frame Bus</strong> delivers the frame to the <strong>History Store</strong> (which
+   appends it), the <strong>Schematic Renderer</strong> (wire colors), the <strong>Current
+   Animator</strong> (dot speeds), the <strong>Chart Renderer</strong> (traces), and the
+   <strong>Lesson Engine</strong> (checks).</li>
+<li>When the student releases the slider, the transaction closes as one
+   undo step (EDT-32), the <strong>Persistence Service</strong> autosaves (PRF-06),
+   and the <strong>xAPI Reporter</strong> sends one statement for the whole drag
+   (XAP table, XAP-08).</li>
+</ol>
+<p>A topology change (adding a part, rewiring) follows the same path, except
+that in step 3 the compiler produces a new netlist and the engine
+<strong>re-maps</strong> its state onto it by stable element identifiers, so that
+capacitors keep their charge (SIM-19). See
+<a href="circuit-model/#4-the-netlist-compiler">Circuit Model §4</a>.</p>
+<h3 id="33-three-kinds-of-state">3.3 Three kinds of state<a class="headerlink" href="#33-three-kinds-of-state" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Owner</th>
+<th>Saved in file?</th>
+<th>Undoable?</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document</strong></td>
+<td>Circuit Document</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Parts, values, wires, probes, lanes, sliders, circuit settings</td>
+</tr>
+<tr>
+<td><strong>Simulation</strong></td>
+<td>Engine (worker), mirrored by History Store</td>
+<td>Only part states at save time (FIL-17)</td>
+<td>No (EDT-33)</td>
+<td>Simulated time, node voltages, capacitor charge, logic states, failure status</td>
+</tr>
+<tr>
+<td><strong>Session</strong></td>
+<td>App Store</td>
+<td>No</td>
+<td>No</td>
+<td>Selection, zoom, active tool, open panels, chart cursors, learner settings</td>
+</tr>
+</tbody>
+</table>
+<p>Keeping these three apart is the single most important structural rule
+in the design. It is what lets undo apply to a running circuit without
+rewinding time (EDT-33), lets the same document be shown in several
+embeds, and lets the engine run headless in tests.</p>
+<div class="admonition note">
+<p class="admonition-title">Two exceptions that are deliberate</p>
+<p>Failure state (RLM-07) is simulation state, but <strong>Repair</strong> is an
+undoable document edit that clears it. The view (zoom and center) is
+session state, but it is written into the file on save (FIL-02) and
+read back on open.</p>
+</div>
+<h2 id="4-threads-and-timing">4. Threads and timing<a class="headerlink" href="#4-threads-and-timing" title="Permanent link">&para;</a></h2>
+<h3 id="41-where-the-simulation-runs">4.1 Where the simulation runs<a class="headerlink" href="#41-where-the-simulation-runs" title="Permanent link">&para;</a></h3>
+<p>The most consequential decision in this design is where the numerical
+work happens.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. Main thread</strong></td>
+<td>The solver runs between animation frames, as in Falstad's simulator.</td>
+<td>Rejected. A stiff circuit, a Newton iteration that needs many passes, or a 500-part matrix stalls the whole interface. PRF-02 and PRF-01 cannot be guaranteed.</td>
+</tr>
+<tr>
+<td><strong>B. Dedicated worker, messages with transferable buffers</strong></td>
+<td>The solver runs in a web worker. Each frame of results is packed into an <code>ArrayBuffer</code> and <em>transferred</em> (not copied) to the main thread.</td>
+<td><strong>Chosen.</strong></td>
+</tr>
+<tr>
+<td><strong>C. Dedicated worker, <code>SharedArrayBuffer</code> ring buffers</strong></td>
+<td>Worker and main thread share memory; no messages for data.</td>
+<td>Rejected for now. <code>SharedArrayBuffer</code> requires cross-origin isolation (COOP and COEP headers). GitHub Pages cannot set headers, and an embedded iframe can only be isolated if the hosting chapter page is isolated too, which would break other content on the page.</td>
+</tr>
+</tbody>
+</table>
+<p>Option B keeps the interface responsive no matter what the solver is
+doing, costs one small transfer per frame (a few kilobytes), and works on
+plain static hosting. The worker protocol is written so that option C can
+be added later behind the same interface if the book ever moves to a host
+that allows isolation.</p>
+<h3 id="42-the-two-clocks">4.2 The two clocks<a class="headerlink" href="#42-the-two-clocks" title="Permanent link">&para;</a></h3>
+<p>Two clocks run independently, and keeping them separate is what makes
+ANI-03 true ("dot speed never depends on simulation speed"):</p>
+<ul>
+<li><strong>Simulated time</strong> advances in the worker. The Engine Host converts
+  real elapsed time into a simulated-time budget using the speed setting
+  (SIM-09), then steps the engine until the budget is used up or a
+  frame deadline arrives.</li>
+<li><strong>Animation time</strong> advances on the main thread with
+  <code>requestAnimationFrame</code>. The Current Animator moves dots using the
+  <em>latest known currents</em> and <em>real</em> elapsed time. It never looks at the
+  simulation speed.</li>
+</ul>
+<p>If the worker cannot keep up, the Engine Host shrinks the budget rather
+than queueing work, and reports <code>slowerThanRequested</code> (PRF-09). The
+interface keeps animating at full frame rate with the most recent values.</p>
+<h3 id="43-workers-per-page">4.3 Workers per page<a class="headerlink" href="#43-workers-per-page" title="Permanent link">&para;</a></h3>
+<p>Each simulator instance (each iframe) has one <strong>live simulation worker</strong>,
+created at startup. An <strong>analysis worker</strong> is created only the first time
+an analysis tab is opened, and is shut down after a minute of idleness.
+A chapter page with four embeds therefore runs four live workers, which
+is acceptable because EMB-07 pauses embeds that are scrolled out of view.</p>
+<h2 id="5-technology-choices">5. Technology choices<a class="headerlink" href="#5-technology-choices" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Chosen</th>
+<th>Main alternatives considered</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>TypeScript (strict) everywhere</td>
+<td>Rust compiled to WebAssembly for the engine; C++ with Emscripten</td>
+<td>See §5.1</td>
+</tr>
+<tr>
+<td>UI framework</td>
+<td>React 19 with React Aria Components</td>
+<td>Svelte 5; Lit web components</td>
+<td>See §5.2</td>
+</tr>
+<tr>
+<td>Schematic drawing</td>
+<td>Canvas 2D, layered</td>
+<td>SVG; WebGL</td>
+<td>See <a href="rendering/#21-drawing-technology">Rendering §2.1</a></td>
+</tr>
+<tr>
+<td>Chart drawing</td>
+<td>Custom Canvas 2D renderer</td>
+<td>uPlot; Plotly; a WebGL plot library</td>
+<td>See <a href="rendering/#51-build-or-borrow">Rendering §5.1</a></td>
+</tr>
+<tr>
+<td>Numerical method</td>
+<td>Modified nodal analysis, Newton–Raphson, trapezoidal with backward-Euler restarts, adaptive step</td>
+<td>Fixed-step backward Euler (Falstad); Gear/BDF2</td>
+<td>See <a href="simulation-engine/#2-numerical-method">Engine §2</a></td>
+</tr>
+<tr>
+<td>Digital logic</td>
+<td>Event-driven kernel coupled to the analog solver</td>
+<td>All gates as analog behavioral models</td>
+<td>See <a href="simulation-engine/#4-mixed-signal-the-digital-event-kernel">Engine §4</a></td>
+</tr>
+<tr>
+<td>Undo</td>
+<td>Transactions of forward and inverse patches</td>
+<td>Command objects; full snapshots</td>
+<td>See <a href="circuit-model/#3-edits-transactions-and-undo">Circuit Model §3</a></td>
+</tr>
+<tr>
+<td>Circuit file</td>
+<td>Versioned JSON with a published JSON Schema</td>
+<td>YAML; a SPICE-like line format</td>
+<td>See <a href="files-and-persistence/#2-the-circuit-file">Files §2</a></td>
+</tr>
+<tr>
+<td>Lesson file</td>
+<td>YAML with a published JSON Schema</td>
+<td>Markdown with directives; JSON</td>
+<td>See <a href="embedding-lessons-xapi/#41-the-lesson-file">Embedding §4.1</a></td>
+</tr>
+<tr>
+<td>Browser storage</td>
+<td>IndexedDB (through a thin wrapper); <code>localStorage</code> only for learner settings</td>
+<td>Origin Private File System; <code>localStorage</code> for everything</td>
+<td>See <a href="files-and-persistence/#5-browser-storage">Files §5</a></td>
+</tr>
+<tr>
+<td>Build</td>
+<td>Vite, ES modules, code splitting</td>
+<td>Webpack; esbuild alone</td>
+<td>Fast development server, first-class workers, simple code splitting for embeds</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td>Vitest (engine and model, run in Node), Playwright (user stories in real browsers)</td>
+<td>Jest; Cypress</td>
+<td>Vitest shares Vite's configuration; Playwright covers Chrome, Firefox, and Safari (PRF-08)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="51-why-typescript-for-the-engine-not-webassembly">5.1 Why TypeScript for the engine, not WebAssembly<a class="headerlink" href="#51-why-typescript-for-the-engine-not-webassembly" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>For</th>
+<th>Against</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TypeScript</strong> (chosen)</td>
+<td>One language for the whole project; the engine runs unchanged in Node for tests; easy to debug in browser tools; small download; modern JavaScript engines are fast enough for the matrix sizes this course needs (a 500-part circuit gives a sparse matrix of a few hundred to a thousand unknowns)</td>
+<td>Floating-point transcendental functions (<code>Math.exp</code>, <code>Math.sin</code>) are not guaranteed to give bit-identical results across browsers</td>
+</tr>
+<tr>
+<td>Rust to WebAssembly</td>
+<td>Fastest solver; bit-identical math everywhere</td>
+<td>Two languages and two toolchains; harder for textbook contributors; a crossing cost on every call between the engine and element models; larger download</td>
+</tr>
+<tr>
+<td>C++ with Emscripten (for example, wrapping ngspice)</td>
+<td>Professional-grade device models for free</td>
+<td>Very large download (several megabytes), poor fit for live editing and state re-mapping, and ngspice's license and batch-oriented design fight the "everything is live" principle</td>
+</tr>
+</tbody>
+</table>
+<p>The engine is designed so that the hot inner kernel (sparse LU
+factorization and solve) sits behind a small interface,
+<code>LinearSolver</code>. If profiling on the reference laptop (open question 10)
+shows the solver is the bottleneck, that one kernel can be replaced with a
+WebAssembly build without touching anything else.</p>
+<p><strong>Determinism (PRN-09, SIM-23).</strong> Basic arithmetic in JavaScript is
+IEEE 754 and identical everywhere, but <code>Math.exp</code>, <code>Math.log</code>,
+<code>Math.sin</code>, and <code>Math.pow</code> may differ in the last bit between browsers.
+The engine therefore never calls them directly. It uses a small
+<code>dmath</code> module of deterministic implementations. Results are then
+identical in every supported browser, not only on repeated runs in one
+browser. Noise sources use a seeded generator (xoshiro128**) whose seed
+is stored in the file.</p>
+<h3 id="52-why-react-with-react-aria">5.2 Why React with React Aria<a class="headerlink" href="#52-why-react-with-react-aria" title="Permanent link">&para;</a></h3>
+<p>The interface has many conventional pieces — menus, dialogs, the
+inspector's forms, the lesson panel, tables — and it must meet WCAG 2.2 AA
+(ACC-01). The hot paths (schematic, dots, chart) are drawn on canvases and
+do <strong>not</strong> go through the framework at all, so framework speed matters
+little. What matters is accessibility, responsive layout, and how many
+people can contribute.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>For</th>
+<th>Against</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>React 19 + React Aria Components</strong> (chosen)</td>
+<td>React Aria provides tested, accessible menus, dialogs, comboboxes, sliders, tabs, tables, and focus management, which covers most of Section 22; the largest pool of contributors and examples</td>
+<td>Larger runtime (about 45 kB compressed); needs care to keep frame-rate data out of React renders</td>
+</tr>
+<tr>
+<td>Svelte 5</td>
+<td>Smaller output; fine-grained updates</td>
+<td>Its accessible-component libraries are younger; fewer contributors; we would hand-build more of ACC-02 to ACC-08</td>
+</tr>
+<tr>
+<td>Lit web components</td>
+<td>Standards-based; tiny runtime; usable from any page</td>
+<td>No accessible component set of comparable depth; most WCAG work would be ours</td>
+</tr>
+</tbody>
+</table>
+<p>The rule that keeps React fast here: <strong>frame-rate data never enters
+React state.</strong> Renderers subscribe to the Frame Bus directly. React
+components that show live numbers (hover cards, the legend's live values,
+the multimeter) subscribe through a hook that samples the bus at most ten
+times a second.</p>
+<h2 id="6-code-organization">6. Code organization<a class="headerlink" href="#6-code-organization" title="Permanent link">&para;</a></h2>
+<p>The application lives in a new top-level <code>app/</code> folder, separate from the
+MkDocs content in <code>docs/</code>. It is a single npm workspace with packages
+whose dependencies point one way only, so the engine can never
+accidentally depend on the interface:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>app/
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  packages/
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    units/         number parsing and formatting (EDT-26), unit algebra (CHT-33)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    dmath/         deterministic math functions and seeded random numbers
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    model/         circuit document, patches, undo, netlist compiler   -&gt; units
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    elements/      one folder per part type: descriptor, model, view   -&gt; model, units
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    engine/        solver, integrator, digital kernel, analyses        -&gt; elements (models only), dmath
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    worker/        engine host and run loop; worker entry points       -&gt; engine
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    formats/       native file, share link, Falstad codecs             -&gt; model, elements
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    render/        schematic renderer, animator, chart renderer        -&gt; model, elements (views only)
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    lesson/        lesson schema, loader, checks, step machine         -&gt; model
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    xapi/          statement builder, queue                            -&gt; (none)
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    app/           React shell, stores, tools, host bridge, persistence -&gt; everything
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>  tests/
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    acceptance/    the 22 circuits of Section 26, run headless in Node
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    library/       opens all 366 Falstad examples (test 20)
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    stories/       Playwright walk-throughs of the Section 25 user stories
+</span></code></pre></div>
+<p><strong>Dependency rule.</strong> <code>engine</code> and everything it depends on must run in
+Node with no DOM. A lint rule enforces it. This is what makes design
+goal 2 possible.</p>
+<h3 id="61-where-the-built-app-lives-on-the-site">6.1 Where the built app lives on the site<a class="headerlink" href="#61-where-the-built-app-lives-on-the-site" title="Permanent link">&para;</a></h3>
+<p><code>vite build</code> writes the finished simulator into <code>docs/simulator/</code>, so
+that <code>mkdocs build</code> copies it into the site and the book can link to
+<code>https://dmccreary.github.io/circuit-simulator/simulator/?example=lrc.txt</code>
+(FIL-19). Embeds in chapters are then <strong>same-origin</strong> with the book,
+which simplifies the host bridge's origin check (EMB-12) and lets the
+browser share one cached copy of the simulator across every chapter.</p>
+<p>Whether <code>docs/simulator/</code> is committed or built just before each publish
+is an open question for the author (§8, question 1).</p>
+<h2 id="7-cross-cutting-concerns">7. Cross-cutting concerns<a class="headerlink" href="#7-cross-cutting-concerns" title="Permanent link">&para;</a></h2>
+<h3 id="71-errors-and-diagnostics">7.1 Errors and diagnostics<a class="headerlink" href="#71-errors-and-diagnostics" title="Permanent link">&para;</a></h3>
+<p>Every component reports problems as structured <strong>diagnostics</strong>, never as
+bare strings, so that the interface can highlight parts and offer fixes
+(PRN-06, EDT-39, SIM-14):</p>
+<div class="language-ts highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">Diagnostic</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">                 </span><span class="c1">// stable kind, such as &quot;sources-in-parallel&quot;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">severity</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;info&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;warning&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="kt">MessageRef</span><span class="p">;</span><span class="w">        </span><span class="c1">// a translation key plus values, never English text</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nx">elements</span><span class="o">:</span><span class="w"> </span><span class="kt">ElementId</span><span class="p">[];</span><span class="w">      </span><span class="c1">// parts and wires to highlight</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nx">nodes?</span><span class="o">:</span><span class="w"> </span><span class="kt">NodeId</span><span class="p">[];</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nx">fixes?</span><span class="o">:</span><span class="w"> </span><span class="kt">FixAction</span><span class="p">[];</span><span class="w">        </span><span class="c1">// each fix is a document transaction the user can apply</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nx">simTime?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w">           </span><span class="c1">// for solver errors (SIM-16)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The netlist compiler produces structural diagnostics (no ground, floating
+sections, sources in parallel). The engine produces numerical ones
+(singular matrix, failure to converge), which it maps back to the parts
+involved by inspecting the matrix row or column that failed. Lessons
+attach their own feedback to diagnostics by <code>id</code> (LES-11).</p>
+<h3 id="72-internationalization">7.2 Internationalization<a class="headerlink" href="#72-internationalization" title="Permanent link">&para;</a></h3>
+<p>All interface and diagnostic text goes through message keys and ICU
+message formatting. Number formatting with units (EDT-26) is in the
+<code>units</code> package and is locale-aware for the decimal separator, while unit
+symbols and metric prefixes stay in SI form in every language.</p>
+<h3 id="73-theming">7.3 Theming<a class="headerlink" href="#73-theming" title="Permanent link">&para;</a></h3>
+<p>Colors are design tokens defined once per theme (light, dark, high
+contrast). Canvas renderers read the same tokens as the CSS, so the
+schematic, chart, and panels always agree (CAN-15). Voltage color scales
+and the probe palette are token sets with a separate set per theme, chosen
+for contrast and color-blind safety (ACC-11, ACC-12).</p>
+<h3 id="74-testing-strategy">7.4 Testing strategy<a class="headerlink" href="#74-testing-strategy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What is tested</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>units</code>, <code>dmath</code>, <code>model</code>, <code>formats</code></td>
+<td>Parsing, patches, undo, netlist compilation, round-trip of files</td>
+<td>Vitest unit tests in Node</td>
+</tr>
+<tr>
+<td><code>engine</code></td>
+<td>Every acceptance circuit in Section 26 with its tolerance; determinism (same input, bit-identical output)</td>
+<td>Vitest in Node; a golden-file test per circuit</td>
+</tr>
+<tr>
+<td>Library</td>
+<td>All 366 Falstad examples open; 20 author-chosen examples match Falstad's waveforms within 1% (test 21)</td>
+<td>Vitest in Node, using reference waveforms captured once from Falstad's simulator</td>
+</tr>
+<tr>
+<td>Rendering</td>
+<td>Visual regression of the schematic and chart</td>
+<td>Playwright screenshots</td>
+</tr>
+<tr>
+<td>Whole app</td>
+<td>Each user story in Section 25, as written</td>
+<td>Playwright in Chrome, Firefox, and WebKit</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>150-part circuit at 30 fps or better (test 22)</td>
+<td>Playwright with a trace, on the reference laptop</td>
+</tr>
+<tr>
+<td>Accessibility</td>
+<td>WCAG 2.2 AA rules</td>
+<td>axe-core in Playwright, plus manual screen-reader passes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8-open-questions-for-the-author">8. Open questions for the author<a class="headerlink" href="#8-open-questions-for-the-author" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Committing the build.</strong> Should <code>docs/simulator/</code> (the built app) be
+   committed so that the existing "publish" routine (commit, push,
+   <code>mkdocs gh-deploy</code>) always ships the latest simulator, or should it be
+   ignored by git and built by a script just before publishing?
+   <em>Recommendation:</em> ignore it in git and add one <code>npm run build</code> step to
+   the publish routine, so the repository does not fill up with build
+   output.</li>
+<li><strong>Reference laptop.</strong> Specification question 10 matters directly here:
+   it decides whether the TypeScript solver is fast enough or whether the
+   WebAssembly kernel (§5.1) is needed for the first release.</li>
+<li><strong>License.</strong> Specification question 2 decides which third-party code
+   the engine may borrow (for example, device model equations from
+   GPL-licensed sources).</li>
+</ol>
+<h2 id="credits">Credits<a class="headerlink" href="#credits" title="Permanent link">&para;</a></h2>
+<p>This design builds on the <a href="../specifications/">Circuit Simulator
+Specification</a>, which in turn draws on Paul
+Falstad's <a href="https://github.com/pfalstad/circuitjs1">CircuitJS1</a> and the
+other sources listed in its <a href="../specifications/#sources">Sources</a>
+section. Specific ideas borrowed from other projects are credited on the
+page where they are used.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../specifications/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Simulator Specification">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Simulator Specification
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="simulation-engine/" class="md-footer__link md-footer__link--next" aria-label="Next: Simulation Engine">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Simulation Engine
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Dan McCreary. Licensed under <a href="license/">CC BY-NC-SA 4.0</a> for non-commercial use.
+    </div>
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "content.action.edit", "navigation.expand", "navigation.path", "navigation.prune", "navigation.indexes", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
