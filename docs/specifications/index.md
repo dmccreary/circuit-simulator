@@ -903,9 +903,11 @@ numerical method, but it does set the results that any method must achieve
 ### 10.1 Run controls
 
 - **SIM-01 — Run and Pause.** A single Run/Pause button (`Space` when the
-  canvas has focus) MUST start and pause the simulation. New circuits MUST
-  start running as soon as they have a complete loop, unless the student
-  has turned off **Run automatically** in settings.
+  canvas has focus) MUST start and pause the simulation.
+- **SIM-01a — Default mode is paused.** Every simulation MUST load in the
+  Paused state, with simulated time at zero, regardless of circuit, embed,
+  or learner settings. The student MUST take an explicit action (pressing
+  Run/Pause, `Space`, or Step) before simulated time advances.
 - **SIM-02 — Step.** **Step** (`.` key) MUST advance the paused simulation by
   one time step. **Step to next event** (Shift+`.`) MUST advance until
   something changes state: a switch, a digital output, a diode or
@@ -2307,7 +2309,6 @@ belong to the circuit and travel with it in files and links.
     | Reduced motion | Follow system, on, off | Follow system |
     | Show fast flicker | On, off | Off |
     | Sound | On, off, volume | Off |
-    | Run automatically | On, off | On |
     | Ghost on change | On, off | Off |
     | Hints in ideal mode | On, off | On |
     | Interface language | Available languages | Browser language |
