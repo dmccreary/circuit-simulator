@@ -36,6 +36,7 @@ nav:
   - About: about.md
   - Course Description: course-description.md
   - List of Circuits: list-of-circuits.md
+  - Simulator Specification: specifications/index.md
 
   - Chapters:
       - List of Chapters: chapters/index.md
