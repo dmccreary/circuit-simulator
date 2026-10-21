@@ -66,31 +66,13 @@ kinds of thread: the browser's **main thread**, which owns everything the
 reader sees and touches, and one or more **web workers**, which own the
 numerical work.
 
-```text
- MAIN THREAD                                          WORKER THREADS
-+-----------------------------------------------+    +-------------------------------+
-|                                               |    |  Live Simulation Worker       |
-|  Application Shell (React + React Aria)       |    |  +-------------------------+  |
-|   menus, panels, inspector, dialogs, lesson   |    |  | Simulation Engine       |  |
-|                     |                         |    |  |  MNA solver, Newton,    |  |
-|                     v                         |    |  |  integrator, digital    |  |
-|  App Store (UI state, settings, selection)    |    |  |  kernel, state ring     |  |
-|                     |                         |    |  +-----------^-------------+  |
-|                     v                         |    |              |                |
-|  Circuit Document --edits--> Netlist Compiler +--->|  Engine Host (run loop,      |
-|   (+ undo history)           (topology)       |cmd |  speed control, batching)    |
-|                                               |    |              |                |
-|  Frame Bus  <----------------------------------+----+  frames: samples, display   |
-|   |        |              |                   |frm |  state, events, errors       |
-|   v        v              v                   |    +-------------------------------+
-|  Schematic  Chart        History Store        |
-|  Renderer   Renderer     (probe traces,       |    +-------------------------------+
-|  (Canvas2D) (Canvas2D)    ghosts, events)     |--->|  Analysis Worker (on demand)  |
-|                                               |<---|  same engine: DC, AC, sweeps  |
-|  Host Bridge (postMessage)   Lesson Engine    |    +-------------------------------+
-|  Persistence (IndexedDB)     xAPI Reporter    |
-+-----------------------------------------------+
-```
+<iframe src="../sims/simulator-architecture/main.html" height="557px" width="100%" scrolling="no"></iframe>
+
+Click any component in the diagram to see its role, what it owns, what it
+connects to, and the requirements it serves. Press **Next step** to trace
+the slider edit described in [§3.2](#32-how-a-change-flows-through-the-system)
+through the system. Dashed arrows cross between threads.
+[Open the diagram full screen](../sims/simulator-architecture/main.html).
 
 ### 3.1 The components
 

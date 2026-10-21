@@ -1,0 +1,71 @@
+{
+  "title": "Circuit Simulator Architecture",
+  "creator": "Dan McCreary",
+  "subject": "Circuit Simulator",
+  "description": "An interactive architecture diagram of the browser-based circuit simulator. Learners click any of twenty components to see its role, ownership, connections, and requirements, and step through how one edit flows from the interface through the simulation worker and back to the screen.",
+  "date": "2026-10-21",
+  "type": "Interactive Simulation",
+  "format": "text/html",
+  "language": "en",
+  "rights": "CC BY-NC-SA 4.0",
+  "educational": {
+    "gradeLevel": [
+      "Undergraduate"
+    ],
+    "subjectArea": "Computer Science",
+    "topic": "Circuit Simulator Architecture",
+    "learningObjectives": [
+      "Explain the role of each major component of the circuit simulator",
+      "Identify which components run on the main thread and which run in web workers",
+      "Trace how a single value change flows from the interface through the engine and back to the screen"
+    ],
+    "bloomsTaxonomy": "Understand",
+    "duration": "10-15 minutes",
+    "prerequisites": [
+      "Basic idea of a browser main thread and web workers",
+      "Basic idea of a time-stepping circuit simulation"
+    ],
+    "standards": []
+  },
+  "technical": {
+    "framework": "p5.js",
+    "version": "1.0",
+    "canvasDimensions": {
+      "width": "responsive",
+      "height": 555
+    },
+    "responsive": true,
+    "dependencies": [
+      "p5.js 1.11.10 (CDN)"
+    ],
+    "accessibility": {
+      "hasAltText": true,
+      "keyboardNavigable": true
+    }
+  },
+  "userInterface": {
+    "controls": [
+      { "type": "select", "label": "Component", "purpose": "Choose a component to open its info box (keyboard alternative to clicking)" },
+      { "type": "link", "label": "Read about the ...", "purpose": "Opens the selected component's section of the design" },
+      { "type": "button", "label": "Back", "purpose": "Previous step of the edit trace" },
+      { "type": "button", "label": "Next step", "purpose": "Next step of the edit trace" }
+    ]
+  },
+  "pedagogical": {
+    "teachingStrategy": "Click-to-reveal exploration plus a step-through worked example",
+    "keyQuestions": [
+      "Why does the simulation run in a worker rather than on the main thread?",
+      "Which component is the single source of truth for what is saved in a file?",
+      "What changes in the trace when the student rewires the circuit instead of changing a value?"
+    ],
+    "commonMisconceptions": [
+      "The interface calls the engine directly; in this design every change goes through document edits and worker messages",
+      "Undo rewinds simulated time; in this design undo applies to the running circuit without touching time"
+    ],
+    "assessmentOpportunities": [
+      "Predict the next component before each trace step",
+      "Sketch the path of a wiring change and explain how it differs"
+    ]
+  },
+  "chapter": ""
+}
