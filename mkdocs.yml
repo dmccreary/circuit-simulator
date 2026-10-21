@@ -37,6 +37,15 @@ nav:
   - Course Description: course-description.md
   - List of Circuits: list-of-circuits.md
   - Simulator Specification: specifications/index.md
+  - Simulator Design:
+      - Overview: design/index.md
+      - Simulation Engine: design/simulation-engine.md
+      - Circuit Model: design/circuit-model.md
+      - Rendering and Animation: design/rendering.md
+      - History and Analyses: design/history-and-analysis.md
+      - Application Shell: design/app-shell.md
+      - Files and Persistence: design/files-and-persistence.md
+      - Embedding, Lessons, and xAPI: design/embedding-lessons-xapi.md
 
   - Chapters:
       - List of Chapters: chapters/index.md
