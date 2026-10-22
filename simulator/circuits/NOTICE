@@ -1,0 +1,5 @@
+These example circuits are from Paul Falstad's circuit simulator (CircuitJS1),
+https://github.com/pfalstad/circuitjs1, src/com/lushprojects/circuitjs1/public/circuits/ at commit 5a707168778216bb6ed01bfdd62e8bbf7ae0a032.
+They are free software under the GNU General Public License, version 2 or later:
+https://github.com/pfalstad/circuitjs1/blob/master/README.md#license
+See also https://www.falstad.com/licensing.html

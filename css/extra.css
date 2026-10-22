@@ -116,3 +116,15 @@
 .md-status--approved:hover:after { background-color: #1b5e20; }
 .md-status--implemented:hover:after  { background-color: #1565c0; }
 .md-status--instrumented:hover:after { background-color: #00695c; }
+
+/* Circuit simulator embeds (docs/js/circuit-embed.js). The helper sets the
+   height from the simulator's preferredHeight message; without the script the
+   iframe keeps the height it was given. */
+.circuit-embed { margin: 1em 0; min-height: 120px; }
+iframe.circuit-sim {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  background: var(--md-default-bg-color);
+}

@@ -1,0 +1,1841 @@
+{
+ "source": {
+  "repository": "https://github.com/pfalstad/circuitjs1",
+  "commit": "5a707168778216bb6ed01bfdd62e8bbf7ae0a032",
+  "path": "src/com/lushprojects/circuitjs1/public/circuits"
+ },
+ "credit": "Example circuits by Paul Falstad (CircuitJS1, falstad.com/circuit), GPL-2.0-or-later. Categories from setuplist.txt.",
+ "license": "https://github.com/pfalstad/circuitjs1/blob/master/README.md#license",
+ "circuits": [
+  {
+   "category": "Basics",
+   "title": "Ohm's Law",
+   "file": "ohms.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Resistors",
+   "file": "resistors.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Capacitor",
+   "file": "cap.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Inductor",
+   "file": "induct.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "LRC Circuit",
+   "file": "lrc.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Voltage Divider",
+   "file": "voltdivide.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Potentiometer",
+   "file": "pot.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Potentiometer Divider",
+   "file": "potdivide.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Thevenin's Theorem",
+   "file": "thevenin.txt"
+  },
+  {
+   "category": "Basics",
+   "title": "Norton's Theorem",
+   "file": "norton.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Capacitor",
+   "file": "capac.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Inductor",
+   "file": "inductac.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Caps of Various Capacitances",
+   "file": "capmultcaps.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Caps w/ Various Frequencies",
+   "file": "capmultfreq.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Inductors of Various Inductances",
+   "file": "indmultind.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Inductors w/ Various Frequencies",
+   "file": "indmultfreq.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Impedances of Same Magnitude",
+   "file": "impedance.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Series Resonance",
+   "file": "res-series.txt"
+  },
+  {
+   "category": "A/C Circuits",
+   "title": "Parallel Resonance",
+   "file": "res-par.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "High-Pass Filter (RC)",
+   "file": "filt-hipass.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Low-Pass Filter (RC)",
+   "file": "filt-lopass.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "High-Pass Filter (RL)",
+   "file": "filt-hipass-l.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Low-Pass Filter (RL)",
+   "file": "filt-lopass-l.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Band-pass Filter",
+   "file": "bandpass.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Band-pass w/ Noise",
+   "file": "bandnoise.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Notch Filter",
+   "file": "notch.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Twin-T Filter",
+   "file": "twint.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Crossover",
+   "file": "crossover.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Butterworth Low-Pass (10 pole)",
+   "file": "butter10lo.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Butterworth High-Pass (10 pole)",
+   "file": "butter10hi.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Butterworth Low-Pass w/ Noise",
+   "file": "butter10loaud.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Butterworth High-Pass w/ Noise",
+   "file": "butter10hiaud.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Butterworth Band-Stop",
+   "file": "butterbandstop.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Bessel vs Butterworth",
+   "file": "besselbutter.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Band-pass with Ringing",
+   "file": "ringing.txt"
+  },
+  {
+   "category": "Passive Filters",
+   "title": "Comb Filter",
+   "file": "comb.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "3-Way Light Switches",
+   "file": "3way.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "3- and 4-Way Light Switches",
+   "file": "4way.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Differentiator",
+   "file": "diff.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Wheatstone Bridge",
+   "file": "wheatstone.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Critically Damped LRC",
+   "file": "lrc-critical.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Current Source",
+   "file": "currentsrcelm.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Inductive Kickback",
+   "file": "inductkick.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Blocking Inductive Kickback",
+   "file": "inductkick-snub.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Power Factor",
+   "file": "powerfactor1.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Power Factor Correction",
+   "file": "powerfactor2.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Resistor Grid",
+   "file": "grid.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Resistor Grid 2",
+   "file": "grid2.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Resistor Cube",
+   "file": "cube.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "Phase-Sequence Network",
+   "file": "phaseseq.txt"
+  },
+  {
+   "category": "Other Passive Circuits",
+   "title": "3-Phase Wye-Wye Balanced Load",
+   "file": "3phasewye.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Series/Parallel",
+   "title": "Inductors in Series",
+   "file": "indseries.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Series/Parallel",
+   "title": "Inductors in Parallel",
+   "file": "indpar.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Series/Parallel",
+   "title": "Caps in Series",
+   "file": "capseries.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Series/Parallel",
+   "title": "Caps in Parallel",
+   "file": "cappar.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers",
+   "title": "Transformer",
+   "file": "transformer.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers",
+   "title": "Transformer w/ DC",
+   "file": "transformerdc.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers",
+   "title": "Step-Up Transformer",
+   "file": "transformerup.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers",
+   "title": "Step-Down Transformer",
+   "file": "transformerdown.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers",
+   "title": "Long-Distance Power Transmission",
+   "file": "longdist.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers: Saturable Core",
+   "title": "Saturable vs Linear Inductor (DC)",
+   "file": "satcore-inductor.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers: Saturable Core",
+   "title": "Low vs High Drive (AC Saturation)",
+   "file": "satcore-comparison.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Transformers: Saturable Core",
+   "title": "Transformer with Saturable Core",
+   "file": "satcore-transformer.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay",
+   "file": "relay.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay AND",
+   "file": "relayand.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay OR",
+   "file": "relayor.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay XOR",
+   "file": "relayxor.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay Mux",
+   "file": "relaymux.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay Flip-Flop",
+   "file": "relayff.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay Toggle Flip-Flop",
+   "file": "relaytff.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay Oscillator",
+   "file": "relayosc.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Relays",
+   "title": "Relay Counter",
+   "file": "relayctr.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Coupled LC's",
+   "title": "LC Modes (2)",
+   "file": "coupled1.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Coupled LC's",
+   "title": "Weak Coupling",
+   "file": "coupled2.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Coupled LC's",
+   "title": "LC Modes (3)",
+   "file": "coupled3.txt"
+  },
+  {
+   "category": "Other Passive Circuits: Coupled LC's",
+   "title": "LC Ladder",
+   "file": "ladder.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Diode",
+   "file": "diodevar.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Diode I/V Curve",
+   "file": "diodecurve.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Half-Wave Rectifier",
+   "file": "rectify.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Full-Wave Rectifier",
+   "file": "fullrect.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Full-Wave Rectifier w/ Filter",
+   "file": "fullrectf.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Diode Limiter",
+   "file": "diodelimit.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "DC Restoration",
+   "file": "dcrestoration.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Blocking Inductive Kickback",
+   "file": "inductkick-block.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Spike Generator",
+   "file": "spikegen.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "AM Detector",
+   "file": "amdetect.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Waveform Clipper",
+   "file": "diodeclip.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Triangle-to-Sine Converter",
+   "file": "sinediode.txt"
+  },
+  {
+   "category": "Diodes",
+   "title": "Ring Modulator",
+   "file": "ringmod.txt"
+  },
+  {
+   "category": "Diodes: Zener Diodes",
+   "title": "I/V Curve",
+   "file": "zeneriv.txt"
+  },
+  {
+   "category": "Diodes: Zener Diodes",
+   "title": "Voltage Reference",
+   "file": "zenerref.txt"
+  },
+  {
+   "category": "Diodes: Zener Diodes",
+   "title": "Voltage Reference w/ Follower",
+   "file": "zenerreffollow.txt"
+  },
+  {
+   "category": "Diodes: Voltage Multipliers",
+   "title": "Voltage Doubler",
+   "file": "voltdouble.txt"
+  },
+  {
+   "category": "Diodes: Voltage Multipliers",
+   "title": "Voltage Doubler 2",
+   "file": "voltdouble2.txt"
+  },
+  {
+   "category": "Diodes: Voltage Multipliers",
+   "title": "Voltage Tripler",
+   "file": "volttriple.txt"
+  },
+  {
+   "category": "Diodes: Voltage Multipliers",
+   "title": "Voltage Quadrupler",
+   "file": "voltquad.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Op-Amp",
+   "file": "opamp.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Op-Amp Feedback",
+   "file": "opampfeedback.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Half-Wave Rectifier (inverting)",
+   "file": "amp-rect.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Full-Wave Rectifier",
+   "file": "amp-fullrect.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Peak Detector",
+   "file": "peak-detect.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Integrator",
+   "file": "amp-integ.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Differentiator (inverting)",
+   "file": "amp-dfdx.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Schmitt Trigger",
+   "file": "amp-schmitt.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Negative Impedance Converter",
+   "file": "nic-r.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Gyrator",
+   "file": "gyrator.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Capacitance Multiplier",
+   "file": "capmult.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Howland Current Source",
+   "file": "howland.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "I-to-V Converter",
+   "file": "itov.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Delta PWM Encoder",
+   "file": "delta-pwm.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "Voltage Regulator",
+   "file": "opamp-regulator.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "741 Internals",
+   "file": "opint.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "741 (inverting amplifier)",
+   "file": "opint-invert-amp.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "741 Slew Rate",
+   "file": "opint-slew.txt"
+  },
+  {
+   "category": "Op-Amps",
+   "title": "741 Current Limits",
+   "file": "opint-current.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Inverting Amplifier",
+   "file": "amp-invert.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Noninverting Amplifier",
+   "file": "amp-noninvert.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Follower",
+   "file": "amp-follower.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Differential Amplifier",
+   "file": "amp-diff.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Summing Amplifier",
+   "file": "amp-sum.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Log Amplifier",
+   "file": "logconvert.txt"
+  },
+  {
+   "category": "Op-Amps: Amplifiers",
+   "title": "Class-D Amplifier",
+   "file": "classd.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Relaxation Oscillator",
+   "file": "relaxosc.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Phase-Shift Oscillator",
+   "file": "phaseshiftosc.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Triangle Wave Generator",
+   "file": "triangle.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Sine Wave Generator",
+   "file": "sine.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Sawtooth Wave Generator",
+   "file": "sawtooth.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Voltage-Controlled Oscillator",
+   "file": "vco.txt"
+  },
+  {
+   "category": "Op-Amps: Oscillators",
+   "title": "Triangle VCO",
+   "file": "trianglevco.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Rossler",
+   "file": "rossler.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Vilnius",
+   "file": "vilnius.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Chua",
+   "file": "chua.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Chaos 1",
+   "file": "chaos1.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Chaos 2",
+   "file": "chaos2.txt"
+  },
+  {
+   "category": "Op-Amps: Chaotic Circuits",
+   "title": "Jerk",
+   "file": "jerk.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "NPN Transistor",
+   "file": "npn.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "PNP Transistor",
+   "file": "pnp.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Switch",
+   "file": "transswitch.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Emitter Follower",
+   "file": "follower.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Common-Emitter Amplifier",
+   "file": "ceamp.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Unity-Gain Phase Splitter",
+   "file": "phasesplit.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Schmitt Trigger",
+   "file": "schmitt.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Current Source",
+   "file": "currentsrc.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Current Source Ramp",
+   "file": "currentsrcramp.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Current Mirror",
+   "file": "mirror.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Darlington Pair",
+   "file": "darlington.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Gilbert Cell Multiplier",
+   "file": "gilbertcell.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "True RMS Converter",
+   "file": "rmsconverter.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Joule Thief",
+   "file": "joule-thief.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Full-Wave Rectifier",
+   "file": "transrectifier.txt"
+  },
+  {
+   "category": "Transistors",
+   "title": "Early Effect",
+   "file": "early.txt"
+  },
+  {
+   "category": "Transistors: Multivibrators",
+   "title": "Astable Multivib",
+   "file": "multivib-a.txt"
+  },
+  {
+   "category": "Transistors: Multivibrators",
+   "title": "Bistable Multivib (Flip-Flop)",
+   "file": "multivib-bi.txt"
+  },
+  {
+   "category": "Transistors: Multivibrators",
+   "title": "Monostable Multivib (One-Shot)",
+   "file": "multivib-mono.txt"
+  },
+  {
+   "category": "Transistors: Differential Amplifiers",
+   "title": "Differential Input",
+   "file": "trans-diffamp.txt"
+  },
+  {
+   "category": "Transistors: Differential Amplifiers",
+   "title": "Common-Mode Input",
+   "file": "trans-diffamp-common.txt"
+  },
+  {
+   "category": "Transistors: Differential Amplifiers",
+   "title": "Common-Mode w/Current Source",
+   "file": "trans-diffamp-cursrc.txt"
+  },
+  {
+   "category": "Transistors: Push-Pull Follower",
+   "title": "Simple, with distortion",
+   "file": "pushpullxover.txt"
+  },
+  {
+   "category": "Transistors: Push-Pull Follower",
+   "title": "Improved",
+   "file": "pushpull.txt"
+  },
+  {
+   "category": "Transistors: Oscillators",
+   "title": "Colpitts Oscillator",
+   "file": "colpitts.txt"
+  },
+  {
+   "category": "Transistors: Oscillators",
+   "title": "Hartley Oscillator",
+   "file": "hartley.txt"
+  },
+  {
+   "category": "Transistors: Oscillators",
+   "title": "Emitter-Coupled LC Oscillator",
+   "file": "eclosc.txt"
+  },
+  {
+   "category": "Transistors: Oscillators",
+   "title": "Crystal Oscillator",
+   "file": "crystalosc2.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "n-MOSFET",
+   "file": "nmosfet.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "p-MOSFET",
+   "file": "pmosfet.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Switch",
+   "file": "mosswitch.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Source Follower",
+   "file": "mosfollower.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Current Source",
+   "file": "moscurrentsrc.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Current Ramp",
+   "file": "moscurrentramp.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Current Mirror",
+   "file": "mosmirror.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Common-Source Amplifier",
+   "file": "mosfetamp.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Inverter",
+   "file": "cmosinverter.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Inverter (w/capacitance)",
+   "file": "cmosinvertercap.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Inverter (slow transition)",
+   "file": "cmosinverterslow.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Transmission Gate",
+   "file": "cmostransgate.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Multiplexer",
+   "file": "mux.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Sample-and-Hold",
+   "file": "samplenhold.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Delayed Buffer",
+   "file": "delayrc.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Leading-Edge Detector",
+   "file": "leadingedge.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Switchable Filter",
+   "file": "switchfilter.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Voltage Inverter",
+   "file": "voltinvert.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Inverter Amplifier",
+   "file": "invertamp.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "Inverter Oscillator",
+   "file": "inv-osc.txt"
+  },
+  {
+   "category": "MOSFETs",
+   "title": "CMOS Crystal Oscillator",
+   "file": "crystalosc.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Square Wave Generator",
+   "file": "555square.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Internals",
+   "file": "555int.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Sawtooth Oscillator",
+   "file": "555saw.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Low-duty-cycle Oscillator",
+   "file": "555lowduty.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Monostable Multivibrator",
+   "file": "555monostable.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Pulse Width Modulator",
+   "file": "555pulsemod.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Pulse Sequencer",
+   "file": "555sequencer.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Schmitt Trigger (inverting)",
+   "file": "555schmitt.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Missing Pulse Detector",
+   "file": "555missing.txt"
+  },
+  {
+   "category": "555 Timer Chip",
+   "title": "Adjustable Duty Cycle Oscillator",
+   "file": "555dutycycle.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "VCVS Low-Pass Filter",
+   "file": "filt-vcvs-lopass.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "VCVS High-Pass Filter",
+   "file": "filt-vcvs-hipass.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Switched-Capacitor Filter",
+   "file": "switchedcap.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Allpass",
+   "file": "allpass1.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Allpass w/ Square",
+   "file": "allpass2.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Butterworth Low-Pass",
+   "file": "actbutterlo.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Butterworth High-Pass",
+   "file": "actbutterhi.txt"
+  },
+  {
+   "category": "Active Filters",
+   "title": "Butterworth Band-Pass",
+   "file": "actbutterband.txt"
+  },
+  {
+   "category": "Logic Families: RTL",
+   "title": "RTL Inverter",
+   "file": "rtlinverter.txt"
+  },
+  {
+   "category": "Logic Families: RTL",
+   "title": "RTL NOR",
+   "file": "rtlnor.txt"
+  },
+  {
+   "category": "Logic Families: RTL",
+   "title": "RTL NAND",
+   "file": "rtlnand.txt"
+  },
+  {
+   "category": "Logic Families: DTL",
+   "title": "DTL Inverter",
+   "file": "dtlinverter.txt"
+  },
+  {
+   "category": "Logic Families: DTL",
+   "title": "DTL NAND",
+   "file": "dtlnand.txt"
+  },
+  {
+   "category": "Logic Families: DTL",
+   "title": "DTL NOR",
+   "file": "dtlnor.txt"
+  },
+  {
+   "category": "Logic Families: TTL",
+   "title": "TTL Inverter",
+   "file": "ttlinverter.txt"
+  },
+  {
+   "category": "Logic Families: TTL",
+   "title": "TTL NAND",
+   "file": "ttlnand.txt"
+  },
+  {
+   "category": "Logic Families: TTL",
+   "title": "TTL NOR",
+   "file": "ttlnor.txt"
+  },
+  {
+   "category": "Logic Families: TTL",
+   "title": "Fan-Out",
+   "file": "fanout.txt"
+  },
+  {
+   "category": "Logic Families: NMOS",
+   "title": "NMOS Inverter",
+   "file": "nmosinverter.txt"
+  },
+  {
+   "category": "Logic Families: NMOS",
+   "title": "Inverter with only MOSFETs",
+   "file": "nmosinverter2.txt"
+  },
+  {
+   "category": "Logic Families: NMOS",
+   "title": "Depletion-load NMOS Inverter",
+   "file": "nmosinverter3.txt"
+  },
+  {
+   "category": "Logic Families: NMOS",
+   "title": "NMOS NAND",
+   "file": "nmosnand.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS Inverter",
+   "file": "cmosinverter.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS NAND",
+   "file": "cmosnand.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS NOR",
+   "file": "cmosnor.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS XOR",
+   "file": "cmosxor.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS Flip-Flop",
+   "file": "cmosff.txt"
+  },
+  {
+   "category": "Logic Families: CMOS",
+   "title": "CMOS Master-Slave Flip-Flop",
+   "file": "cmosmsff.txt"
+  },
+  {
+   "category": "Logic Families: ECL",
+   "title": "ECL NOR/OR",
+   "file": "eclnor.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "CGAND",
+   "file": "3-cgand.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "CGOR",
+   "file": "3-cgor.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "Complement (F210)",
+   "file": "3-invert.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "F211",
+   "file": "3-f211.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "F220",
+   "file": "3-f220.txt"
+  },
+  {
+   "category": "Logic Families: Ternary",
+   "title": "F221",
+   "file": "3-f221.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Exclusive OR",
+   "file": "xor.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Half Adder",
+   "file": "halfadd.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Full Adder",
+   "file": "fulladd.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "1-of-4 Decoder",
+   "file": "decoder.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Priority Encoder",
+   "file": "priencoder.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "2-to-1 Mux",
+   "file": "mux3state.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Majority Logic",
+   "file": "majority.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "2-Bit Comparator",
+   "file": "digcompare.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "7-Segment LED Decoder",
+   "file": "7segdecoder.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "Brent-Kung Adder",
+   "file": "brentkung.txt"
+  },
+  {
+   "category": "Combinational Logic",
+   "title": "74181 ALU",
+   "file": "alu74181.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "Divide-by-2",
+   "file": "divideby2.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "Divide-by-3",
+   "file": "divideby3.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "LED Flasher",
+   "file": "ledflasher.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "Traffic Light",
+   "file": "traffic.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "Static RAM",
+   "file": "sram.txt"
+  },
+  {
+   "category": "Sequential Logic",
+   "title": "Dynamic RAM",
+   "file": "dram.txt"
+  },
+  {
+   "category": "Sequential Logic: Flip-Flops",
+   "title": "SR Flip-Flop",
+   "file": "nandff.txt"
+  },
+  {
+   "category": "Sequential Logic: Flip-Flops",
+   "title": "Clocked SR Flip-Flop",
+   "file": "clockedsrff.txt"
+  },
+  {
+   "category": "Sequential Logic: Flip-Flops",
+   "title": "Master-Slave Flip-Flop",
+   "file": "masterslaveff.txt"
+  },
+  {
+   "category": "Sequential Logic: Flip-Flops",
+   "title": "Edge-Triggered D Flip-Flop",
+   "file": "edgedff.txt"
+  },
+  {
+   "category": "Sequential Logic: Flip-Flops",
+   "title": "JK Flip-Flop",
+   "file": "jkff.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "4-Bit Ripple Counter",
+   "file": "counter.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "8-Bit Ripple Counter",
+   "file": "counter8.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Synchronous Counter",
+   "file": "synccounter.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Up/Down Counter",
+   "file": "updownctr.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Decimal Counter",
+   "file": "deccounter.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Gray Code Counter",
+   "file": "graycode.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Johnson Counter",
+   "file": "johnsonctr.txt"
+  },
+  {
+   "category": "Sequential Logic: Counters",
+   "title": "Cascading Ring Counters",
+   "file": "ringcascade.txt"
+  },
+  {
+   "category": "Sequential Logic: Shift Registers",
+   "title": "Serial-In Parallel-Out",
+   "file": "sipo-sr.txt"
+  },
+  {
+   "category": "Sequential Logic: Shift Registers",
+   "title": "Parallel-In Serial-Out",
+   "file": "piso-sr.txt"
+  },
+  {
+   "category": "Sequential Logic: Shift Registers",
+   "title": "Universal",
+   "file": "unishiftreg.txt"
+  },
+  {
+   "category": "Sequential Logic: TD4 CPU",
+   "title": "TD4 LED Strobe",
+   "file": "td4.txt"
+  },
+  {
+   "category": "Sequential Logic: TD4 CPU",
+   "title": "TD4 Counter",
+   "file": "td4-ctr.txt"
+  },
+  {
+   "category": "Sequential Logic: TD4 CPU",
+   "title": "TD4 Down Counter",
+   "file": "td4-ctr-dn.txt"
+  },
+  {
+   "category": "Sequential Logic: TD4 CPU",
+   "title": "TD4 Up-Down Counter",
+   "file": "td4-ctr-up-dn.txt"
+  },
+  {
+   "category": "Sequential Logic: TD4 CPU",
+   "title": "TD4 Add 2",
+   "file": "td4-add2.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Flash ADC",
+   "file": "flashadc.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Delta-Sigma ADC",
+   "file": "deltasigma.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Half-Flash (Subranging) ADC",
+   "file": "hfadc.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Binary-Weighted DAC",
+   "file": "dac.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "R-2R Ladder DAC",
+   "file": "r2rladder.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Switch-Tree DAC",
+   "file": "swtreedac.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "Digital Sine Wave",
+   "file": "digsine.txt"
+  },
+  {
+   "category": "Analog/Digital",
+   "title": "QAM-256 Modulator/Demodulator",
+   "file": "qam-256.txt"
+  },
+  {
+   "category": "Power Converters",
+   "title": "Boost Converter",
+   "file": "conv-boost.txt"
+  },
+  {
+   "category": "Power Converters",
+   "title": "Buck Converter",
+   "file": "conv-buck.txt"
+  },
+  {
+   "category": "Power Converters",
+   "title": "Buck-Boost Converter",
+   "file": "conv-buckboost.txt"
+  },
+  {
+   "category": "Power Converters",
+   "title": "Ćuk Converter",
+   "file": "conv-cuk.txt"
+  },
+  {
+   "category": "Power Converters",
+   "title": "SEPIC Converter",
+   "file": "conv-sepic.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "XOR Phase Detector",
+   "file": "xorphasedet.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Type I PLL",
+   "file": "pll.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Phase Comparator (Type II)",
+   "file": "phasecomp.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Phase Comparator Internals",
+   "file": "phasecompint.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Type II PLL",
+   "file": "pll2.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Type II PLL (fast)",
+   "file": "pll2a.txt"
+  },
+  {
+   "category": "Phase-Locked Loops",
+   "title": "Frequency Doubler",
+   "file": "freqdouble.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Simple TL",
+   "file": "tl.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Standing Wave",
+   "file": "tlstand.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Termination",
+   "file": "tlterm.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Mismatched lines (Pulse)",
+   "file": "tlmismatch.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Mismatched lines (Standing Wave)",
+   "file": "tlmis1.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Impedance Matching (L-Section)",
+   "file": "tlmatch1.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Impedance Matching (Shunt Stub)",
+   "file": "tlmatch2.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Stub Frequency Response",
+   "file": "tlfreq.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Low-Pass Filter",
+   "file": "tllopass.txt"
+  },
+  {
+   "category": "Transmission Lines",
+   "title": "Light Switch",
+   "file": "tllight.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCCS Resistor",
+   "file": "cs-resistor.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCCS Varying Resistor",
+   "file": "cs-varyresistor.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Op-Amp",
+   "file": "cs-opamp.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Op-Amp With Rails",
+   "file": "cs-opamprail.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Multiplier",
+   "file": "cs-multiplier.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Full Rectifier",
+   "file": "cs-fullrectifier.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Voltage Ramp",
+   "file": "cs-ramp.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "Current Adder",
+   "file": "cs-currentadder.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Integrator",
+   "file": "cs-integrator.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCVS Differentiator",
+   "file": "cs-diff.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "CCVS Variable Inductor",
+   "file": "cs-varinduct.txt"
+  },
+  {
+   "category": "Controlled Sources",
+   "title": "VCCS Variable Capacitor",
+   "file": "cs-varicap.txt"
+  },
+  {
+   "category": "Subcircuits",
+   "title": "Full Rectifier",
+   "file": "fullrect-sc.txt"
+  },
+  {
+   "category": "Subcircuits",
+   "title": "Full Adder (nested)",
+   "file": "adder4-sc.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "LED Array",
+   "file": "ledarray.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "DIAC/TRIAC Dimmer",
+   "file": "triacdimmer.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "Unijunction Oscillator",
+   "file": "ujtosc.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "3-Phase Motor",
+   "file": "3motor.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "Latching Relay",
+   "file": "latchingrelay.txt"
+  },
+  {
+   "category": "Misc Devices",
+   "title": "Gyrator",
+   "file": "gyratorelm.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "JFET Current Source",
+   "file": "jfetcurrentsrc.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "JFET Follower",
+   "file": "jfetfollower.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "JFET Follower w/zero offset",
+   "file": "jfetfollower-nooff.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "Common-Source Amplifier",
+   "file": "jfetamp.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "Volume Control",
+   "file": "volume.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "Lambda Diode",
+   "file": "lambda-diode.txt"
+  },
+  {
+   "category": "Misc Devices: JFETs",
+   "title": "Lambda Diode Oscillator",
+   "file": "lambda-diode-osc.txt"
+  },
+  {
+   "category": "Misc Devices: Tunnel Diodes",
+   "title": "I/V Curve",
+   "file": "tdiode.txt"
+  },
+  {
+   "category": "Misc Devices: Tunnel Diodes",
+   "title": "LC Oscillator",
+   "file": "tdosc.txt"
+  },
+  {
+   "category": "Misc Devices: Tunnel Diodes",
+   "title": "Relaxation Oscillator",
+   "file": "tdrelax.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Memristor",
+   "file": "mr.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Sine Wave",
+   "file": "mr-sine.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Square Wave",
+   "file": "mr-square.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Triangle Wave",
+   "file": "mr-triangle.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Hard-Switching 1",
+   "file": "mr-sine2.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Hard-Switching 2",
+   "file": "mr-sine3.txt"
+  },
+  {
+   "category": "Misc Devices: Memristors",
+   "title": "Crossbar Memory",
+   "file": "mr-crossbar.txt"
+  },
+  {
+   "category": "Misc Devices: Triodes",
+   "title": "Triode",
+   "file": "triode.txt"
+  },
+  {
+   "category": "Misc Devices: Triodes",
+   "title": "Amplifier",
+   "file": "triodeamp.txt"
+  },
+  {
+   "category": "Misc Devices: Silicon-Controlled Rectifiers",
+   "title": "SCR",
+   "file": "scr.txt"
+  },
+  {
+   "category": "Misc Devices: Silicon-Controlled Rectifiers",
+   "title": "AC Trigger",
+   "file": "scractrig.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "CCII+",
+   "file": "cc2.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "CCII-",
+   "file": "cc2n.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "Inductor Simulator",
+   "file": "ccinductor.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "CCII+ Implementation",
+   "file": "cc2imp.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "CCII- Implementation",
+   "file": "cc2impn.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "Current Amplifier",
+   "file": "cciamp.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "VCCS",
+   "file": "ccvccs.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "Current Differentiator",
+   "file": "ccdiff.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "Current Integrator",
+   "file": "ccint.txt"
+  },
+  {
+   "category": "Misc Devices: Current Conveyor",
+   "title": "Current-Controlled Voltage Source",
+   "file": "ccitov.txt"
+  },
+  {
+   "category": "Misc Devices: Spark Gap",
+   "title": "Sawtooth Generator",
+   "file": "spark-sawtooth.txt"
+  },
+  {
+   "category": "Misc Devices: Spark Gap",
+   "title": "Tesla Coil",
+   "file": "tesla.txt"
+  },
+  {
+   "category": "Misc Devices: Spark Gap",
+   "title": "Marx Generator",
+   "file": "spark-marx.txt"
+  },
+  {
+   "category": "Misc Devices: Operational Transconductance Amplifier (OTA)",
+   "title": "OTA Voltage Controlled Amplifier (VCA)",
+   "file": "ota-vca.txt"
+  },
+  {
+   "category": "Misc Devices: Operational Transconductance Amplifier (OTA)",
+   "title": "OTA Single Stage VCF (low pass)",
+   "file": "ota-vcf-single.txt"
+  },
+  {
+   "category": "Misc Devices: Operational Transconductance Amplifier (OTA)",
+   "title": "OTA Ring Modulator",
+   "file": "ota-ringmod.txt"
+  },
+  {
+   "category": "Misc Devices: Operational Transconductance Amplifier (OTA)",
+   "title": "LM137000 Gain Oddity",
+   "file": "ota-gain.txt"
+  },
+  {
+   "category": "Misc Devices: Light Bulb",
+   "title": "Light Bulb",
+   "file": "lightbulb.txt"
+  },
+  {
+   "category": "Misc Devices: Light Bulb",
+   "title": "Wien Bridge Oscillator",
+   "file": "wienbridge.txt"
+  },
+  {
+   "category": "Misc Devices: Varactor",
+   "title": "Varactor",
+   "file": "varactor.txt"
+  },
+  {
+   "category": "Misc Devices: Varactor",
+   "title": "VCO",
+   "file": "varactorvco.txt"
+  },
+  {
+   "category": "Misc Devices: Norton Amplifier",
+   "title": "Norton Inverting Amplifier",
+   "file": "norton-invert.txt"
+  },
+  {
+   "category": "Misc Devices: Norton Amplifier",
+   "title": "Norton Noninverting Amplifier",
+   "file": "norton-noninvert.txt"
+  },
+  {
+   "category": "Misc Devices: Norton Amplifier",
+   "title": "Norton Sawtooth Oscillator",
+   "file": "norton-saw.txt"
+  },
+  {
+   "category": "2-D Scope",
+   "title": "Lissajous Figures",
+   "file": "lissa.txt"
+  },
+  {
+   "category": "2-D Scope",
+   "title": "Checkerboard",
+   "file": "plot2d-checker.txt"
+  },
+  {
+   "category": "2-D Scope",
+   "title": "Color Checkerboard",
+   "file": "plot2d-color.txt"
+  },
+  {
+   "category": "2-D Scope",
+   "title": "Smiley",
+   "file": "plot2d-smile.txt"
+  }
+ ]
+}
