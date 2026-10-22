@@ -7,7 +7,12 @@ export type ToolSpec =
   | { id: "select" }
   | { id: "place"; type: string }
   | { id: "wire" }
-  | { id: "probe-v" };
+  | { id: "probe-v" }
+  // Measurement tools (spec §13): current and power probes, Loop and Junction tools.
+  | { id: "probe-i" }
+  | { id: "probe-p" }
+  | { id: "loop" }
+  | { id: "junction" };
 
 /** Session state (app-shell.md §1): never saved in the circuit file. */
 export interface AppState {
@@ -25,6 +30,8 @@ export interface AppState {
   theme?: ThemeName;
   diagnostics: Omit<Diagnostic, "fixes">[];
   workerError?: string;
+  /** Blind prediction (lesson `blind:`): numbers and traces the student must predict are hidden. */
+  blind?: { readouts: boolean; traces: boolean };
 }
 
 export const initialAppState = (dark = false): AppState => ({

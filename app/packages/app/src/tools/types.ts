@@ -1,6 +1,6 @@
-import type { CircuitDocument, MessageRef, Part, Point } from "@cs/model";
+import type { CircuitDocument, CompiledCircuit, MessageRef, Part, Point } from "@cs/model";
 import type { ElementDescriptor } from "@cs/elements";
-import type { HitResult, ViewTransform } from "@cs/render";
+import type { HitResult, Theme, ViewTransform } from "@cs/render";
 import type { ToolSpec } from "../app-state";
 
 export interface CanvasPointer {
@@ -9,6 +9,8 @@ export interface CanvasPointer {
   y: number;
   button: number;
   shiftKey: boolean;
+  /** Alt/Option held (quick probe, PRB-02). */
+  altKey?: boolean;
   /** ms timestamp, for double-click detection. */
   time: number;
 }
@@ -42,6 +44,15 @@ export interface ToolContext {
   invalidateView(): void;
   invalidateOverlay(): void;
   newId(prefix: string): string;
+  /** Double-click action on a part, such as looking inside a subcircuit; true when it acted. */
+  openPart?(part: string): boolean;
+  /** Live data for measurement tools (absent in plain editing harnesses). */
+  compiled?(): CompiledCircuit | undefined;
+  /** Display state being drawn: live, or the scrub position. */
+  display?(): ArrayLike<number> | undefined;
+  theme?(): Theme;
+  /** Hide live numbers (lesson blind prediction). */
+  blind?(): boolean;
 }
 
 export interface Tool {

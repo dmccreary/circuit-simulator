@@ -14,6 +14,9 @@ import { timer555Descriptor } from "../timer-555/descriptor";
 import { transmissionLineDescriptor } from "../transmission-line/descriptor";
 import { voltageReadoutDescriptor } from "../voltage-readout/descriptor";
 import { waveformSourceDescriptor } from "../waveform-source/descriptor";
+import { ANALOG2_DESCRIPTORS } from "./analog2-descriptors";
+import { CHIP_DESCRIPTORS } from "./chips-descriptors";
+import { ANALOGIC_DESCRIPTORS } from "./analogic-descriptors";
 
 export const MORE_DESCRIPTORS: readonly ElementDescriptor[] = [
   railDescriptor,
@@ -30,4 +33,7 @@ export const MORE_DESCRIPTORS: readonly ElementDescriptor[] = [
   expressionSourceDescriptor,
   sevenSegmentDescriptor,
   numberDisplayDescriptor,
+  ...ANALOG2_DESCRIPTORS,
+  ...CHIP_DESCRIPTORS,
+  ...ANALOGIC_DESCRIPTORS,
 ];

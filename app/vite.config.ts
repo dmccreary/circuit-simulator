@@ -1,13 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
+import { offlinePlugin } from "./packages/app/src/offline/sw-build";
+
+const readIfPresent = (rel: string) => {
+  const p = fileURLToPath(new URL(rel, import.meta.url));
+  return existsSync(p) ? readFileSync(p, "utf8") : "";
+};
 
 const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app", "xapi", "persistence", "lesson"];
 
 // Same @cs/* aliases as vitest.config.ts, including the elements subpaths.
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  // offlinePlugin: emits sw.js, the service worker for offline use (PRF-07).
+  plugins: [react(), offlinePlugin({ extraVersionInputs: () => [readIfPresent("./public/circuits/index.json")] })],
   resolve: {
     alias: [
       { find: /^@cs\/([a-z]+)\/([a-z-]+)$/, replacement: fileURLToPath(new URL("./packages/$1/src/$2.ts", import.meta.url)) },

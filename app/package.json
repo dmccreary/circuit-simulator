@@ -8,6 +8,7 @@
     "build": "node scripts/fetch-examples.mjs --if-missing && vite build",
     "fetch-examples": "node scripts/fetch-examples.mjs",
     "test": "vitest run",
+    "test:acceptance": "vitest run tests/acceptance tests/stories",
     "typecheck": "tsc -p . --noEmit"
   },
   "devDependencies": {

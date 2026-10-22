@@ -21,6 +21,7 @@ import { resistorModel } from "./resistor/model";
 import { squareSourceModel } from "./square-source/model";
 import { switchModel } from "./switch/model";
 import { voltmeterModel } from "./voltmeter/model";
+import { ratedFactory } from "./shared/rated-model";
 
 // Essentials. "ground" has no model: it only names its net.
 const ESSENTIAL_MODELS: Record<string, ModelFactory> = {
@@ -50,10 +51,18 @@ const LOADERS: Record<LazyGroup, () => Promise<Record<string, ModelFactory>>> = 
 };
 
 const registry = new LazyRegistry(ESSENTIAL_MODELS, LOADERS);
+const rated = new Map<string, [ModelFactory, ModelFactory]>();
 
 /** The model factory of a loaded part type (Essentials, or a group already ensured). */
 export function getModelFactory(type: string): ModelFactory | undefined {
-  return registry.get(type);
+  const f = registry.get(type);
+  if (!f) return undefined;
+  // Rated parts heat and can fail (RLM-04–06; shared/rated-model.ts).
+  const hit = rated.get(type);
+  if (hit?.[0] === f) return hit[1];
+  const r = ratedFactory(type, f)!;
+  rated.set(type, [f, r]);
+  return r;
 }
 
 /** Load the model groups these part types need; resolves at once when all are loaded. */

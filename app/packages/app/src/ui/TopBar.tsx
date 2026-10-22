@@ -7,6 +7,8 @@ import type { ToolSpec } from "../app-state";
 import { FileMenu } from "../files/FileMenu";
 import { EditMenu } from "../edit/EditMenu";
 import { ViewMenu } from "../layout/ViewMenu";
+import { RealismBadge } from "../realism/RealismBadge";
+import { AcNotice } from "../realism/AcNotice";
 
 const SPEEDS: { value: number | "fit"; label: string }[] = [
   { value: 1e-6, label: "1 µs / s" },
@@ -24,6 +26,14 @@ const TOOLS: { spec: ToolSpec; label: string; key: string }[] = [
   { spec: { id: "select" }, label: "tool.select", key: "Esc" },
   { spec: { id: "wire" }, label: "tool.wire", key: "W" },
   { spec: { id: "probe-v" }, label: "tool.probe", key: "P" },
+];
+
+/** Measurement tools (spec §13); their command ids carry the probe capability. */
+const MEASURE_TOOLS: { spec: ToolSpec; label: string; command: string; key: string }[] = [
+  { spec: { id: "probe-i" }, label: "tool.probeCurrent", command: "probe.current", key: "I" },
+  { spec: { id: "probe-p" }, label: "tool.probePower", command: "probe.power", key: "⇧P" },
+  { spec: { id: "loop" }, label: "tool.loop", command: "probe.loop", key: "K" },
+  { spec: { id: "junction" }, label: "tool.junction", command: "probe.junction", key: "J" },
 ];
 
 export function TopBar() {
@@ -58,6 +68,8 @@ export function TopBar() {
       </span>
       <span className={`state ${runState}`}>{t(`status.${runState}`)}</span>
       {slower && <span className="warn">slower than requested</span>}
+      <AcNotice />
+      <RealismBadge />
       <label className="speed">
         {t("speed.label")}{" "}
         <select
@@ -95,6 +107,16 @@ export function TopBar() {
           {t(tl.label)} <kbd>{tl.key}</kbd>
         </ToggleButton>
       ))}
+      {MEASURE_TOOLS.filter((tl) => c.commands.allowed(tl.command)).map((tl) => (
+        <ToggleButton key={tl.spec.id} className="btn tool" data-command={tl.command} isSelected={tool === tl.spec.id} onChange={() => c.setTool(tl.spec)}>
+          {t(tl.label)} <kbd>{tl.key}</kbd>
+        </ToggleButton>
+      ))}
+      {c.commands.allowed("probe.multimeter") && (
+        <Button className="btn" onPress={run("probe.multimeter")} data-command="probe.multimeter" aria-keyshortcuts="M">
+          {t("cmd.multimeter")}
+        </Button>
+      )}
       <span className="sep" />
       {c.commands.allowed("analysis.open") && (
         <Button className="btn" onPress={run("analysis.open")}>

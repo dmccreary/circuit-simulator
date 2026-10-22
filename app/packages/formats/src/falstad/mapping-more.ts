@@ -9,6 +9,9 @@
 import type { PropValue } from "@cs/model";
 import type { PartMapping } from "./mapping";
 import { unescapeFalstad, type FalstadElement } from "./text";
+import { CHIP_FLIPS, E, N, S, W, chipVariant, farEndFan, frame, inputFan, type Pt } from "./mapping-variants";
+import { ANALOG2_FALSTAD_PARTS } from "./mapping-analog2";
+import { ANALOGIC_FALSTAD_PARTS } from "./mapping-analogic";
 
 type Rule = (el: FalstadElement, unit: number) => PartMapping | null;
 
@@ -52,32 +55,48 @@ function rail(el: FalstadElement, variable = false): PartMapping | null {
 
 /** Chip pin spacing (ChipElm.setSize: cspc2 = 16·size, size 1 with FLAG_SMALL = 1). */
 const chipSpacing = (el: FalstadElement) => (el.flags & 1 ? 16 : 32);
-const CHIP_FLIP_FLAGS = (1 << 10) | (1 << 11) | (1 << 12); // FLAG_FLIP_X, _Y, _XY
+const CHIP_FLIP_FLAGS = CHIP_FLIPS; // FLAG_FLIP_X, _Y, _XY
 
-/** Falstad's first gate input sits farthest along its perpendicular; ours is on the other side, so mirror. */
+/** GateElm input offsets across the axis, in gate heights (the axis is skipped for even counts). */
+function gateOffsets(n: number): number[] {
+  const out: number[] = [];
+  for (let i = 0, i0 = -Math.floor(n / 2); i < n; i++, i0++) {
+    if (i0 === 0 && n % 2 === 0) i0++;
+    out.push(i0);
+  }
+  return out;
+}
+
+/** Input counts with a part type ("and-gate-5"); 2 is the plain gate. */
+const MAX_GATE_INPUTS = 8;
+
+/**
+ * Falstad's first gate input sits farthest along its perpendicular; ours is on the other side, so mirror.
+ * Full-size gates (16-pixel input spacing) in an 8-pixel circuit get a fan of wires to our inputs.
+ */
 function gate(type: string): Rule {
   return (el, unit) => {
     const n = num(el, 0, 2);
-    if (n < 2 || n > 4) return null;
+    if (!Number.isInteger(n) || n < 1 || n > MAX_GATE_INPUTS) return null;
     if (el.flags & ((1 << 2) | (1 << 3))) return null; // FLAG_INVERT_INPUTS, FLAG_DEMORGAN
     const hs = el.flags & 1 ? 8 : 16; // gheight, FLAG_SMALL
-    if (hs !== unit) return null; // inputs must land one grid unit apart
-    const i0 = -Math.floor(n / 2);
-    const dx = el.x2 - el.x1;
-    const dy = el.y2 - el.y1;
-    const dn = Math.hypot(dx, dy) || 1;
-    // interpPoint(point1, point2, 0, g) offsets by g·(dy, -dx)/dn.
-    const at: [number, number] = [el.x1 + (hs * i0 * dy) / dn, el.y1 - (hs * i0 * dx) / dn];
     const props: Record<string, PropValue> = { supply: num(el, 2, 5) };
     if (el.flags & 2) props.schmitt = true; // FLAG_SCHMITT
-    return {
-      type: n === 2 ? type : `${type}-${n}`,
-      props,
-      posts: 3,
-      place: { at, toward: [at[0] + dx, at[1] + dy], flip: true },
-    };
+    const base = { type: n === 2 ? type : `${type}-${n}`, props, posts: 3 as const };
+    const { u, p } = frame(el);
+    if (hs === 2 * unit) {
+      const fan = inputFan(el, unit, gateOffsets(n).map((o) => hs * o), 2);
+      if (!fan) return null;
+      return { ...base, place: { at: fan.at, toward: add(fan.at, u, fan.length), flip: true }, wires: fan.wires };
+    }
+    if (hs !== unit) return null; // inputs must land one grid unit apart
+    // interpPoint(point1, point2, 0, g) offsets by g·(dy, -dx)/dn.
+    const at = p(0, hs * gateOffsets(n)[0]);
+    return { ...base, place: { at, toward: [at[0] + el.x2 - el.x1, at[1] + el.y2 - el.y1], flip: true } };
   };
 }
+
+const add = (a: Pt, b: Pt, k: number): Pt => [a[0] + k * b[0], a[1] + k * b[1]];
 
 /** CircuitElm.setPoints(): perpendicular offsets follow the drawing direction. */
 function dsign(el: FalstadElement): number {
@@ -86,12 +105,35 @@ function dsign(el: FalstadElement): number {
   return dy === 0 ? Math.sign(dx) : Math.sign(dy);
 }
 
-function analogSwitch(type: string): Rule {
+/**
+ * AnalogSwitchElm's control post is 16 px from the middle on the -openhs side; AnalogSwitch2Elm's
+ * throws are 16 px either side of point2 and its control is on the +openhs side. In an 8-pixel
+ * circuit ours sit 8 px out, so wires join them.
+ */
+function analogSwitch(type: string, two = false): Rule {
   return (el, unit) => {
-    if (unit !== 16) return null;
+    if (unit !== 16 && unit !== 8) return null;
     // openhs is -16 when exactly one of FLAG_FLIPPED_X (4), _Y (8), FLAG_FLIPPED (16) flips it.
     const flips = [4, 8, 16].filter((f) => el.flags & f).length;
+    const openhs = flips % 2 === 1 ? -16 : 16;
+    let toward: Pt = [el.x2, el.y2];
+    let wires: Pt[][] | undefined;
+    if (unit === 8) {
+      const { dn, p } = frame(el);
+      if (two) {
+        const fan = farEndFan(el, unit, 2, openhs);
+        if (!fan) return null;
+        ({ toward, wires } = fan);
+      } else {
+        const f = p(dn / 2, -openhs);
+        const o = p(Math.floor(dn / unit / 2) * unit, -openhs / 2);
+        if (f[0] !== o[0] && f[1] !== o[1]) return null;
+        if (!Number.isInteger(f[0] / unit) || !Number.isInteger(f[1] / unit)) return null;
+        wires = [[o, f]];
+      }
+    }
     return {
+      wires,
       type,
       props: {
         onResistance: num(el, 0, 20),
@@ -101,7 +143,7 @@ function analogSwitch(type: string): Rule {
         pulldown: (el.flags & 2) !== 0,
       },
       posts: 3,
-      place: { at: [el.x1, el.y1], toward: [el.x2, el.y2], flip: flips % 2 === 1 },
+      place: { at: [el.x1, el.y1], toward, flip: flips % 2 === 1 },
     };
   };
 }
@@ -191,45 +233,51 @@ export const MORE_FALSTAD_PARTS: Record<string, Rule> = {
   "151": gate("nand-gate"),
   "152": gate("or-gate"),
   "153": gate("nor-gate"),
-  "154": (el, unit) => (num(el, 0, 2) === 2 ? gate("xor-gate")(el, unit) : null),
+  "154": gate("xor-gate"),
 
   // DFlipFlopElm (ChipElm): pins D (W0), Q (E0), Q̄ (E2), clock (W1); FLAG_RESET = 2 adds R at W2,
-  // FLAG_SET = 4 moves pins, FLAG_INVERT_SET_RESET = 8. Falstad's chip is 3 spacings wide with Q̄
+  // FLAG_SET = 4 moves pins, FLAG_INVERT_SET_RESET = 8 makes them active-low. Falstad's chip is 3 spacings wide with Q̄
   // two spacings down; ours has Q̄ one spacing down, so a wire joins the two positions.
-  "155": (el, unit) => {
-    if (el.flags & (4 | 8 | CHIP_FLIP_FLAGS)) return null;
+  "155": chipVariant((el, unit) => {
+    if (el.flags & (4 | CHIP_FLIP_FLAGS)) return null;
     const c = chipSpacing(el);
     if (c !== 2 * unit) return null; // a small chip on a 16-pixel grid: pins one unit apart
     const { x1: x, y1: y } = el;
     const wires: [number, number][][] = [[[x + 3 * c, y + c], [x + 3 * c, y + 2 * c]]];
     if (el.flags & 2) wires.push([[x, y + 2 * c], [x + c, y + 2 * c]]); // R: W2 -> our R below the box
-    return { type: "d-flip-flop", props: {}, posts: 4, place: { at: [x, y], toward: [x + 3 * c, y], flip: false }, wires };
-  },
+    const props = { invertSetReset: (el.flags & 8) !== 0 };
+    return { type: "d-flip-flop", props, posts: 4, place: { at: [x, y], toward: [x + 3 * c, y], flip: false }, wires };
+  }, (el) => ({ sizeX: 2, sizeY: 3, pins: [W(0), W(1), E(2, 0), E(2, 2), ...(el.flags & 2 ? [W(2)] : [])] })),
 
   // JKFlipFlopElm (ChipElm): J (W0), clock (W1), K (W2), Q (E0), Q̄ (E2) — the same order and places as ours.
-  // Falstad triggers on the falling edge unless FLAG_POSITIVE_EDGE = 4; ours on the rising edge.
-  "156": (el, unit) => {
-    if (el.flags & (2 | 8 | CHIP_FLIP_FLAGS)) return null;
-    const c = chipSpacing(el);
-    if (c !== 2 * unit) return null;
-    return {
-      type: "jk-flip-flop",
-      props: {},
-      posts: 4,
-      place: { at: [el.x1, el.y1], toward: [el.x1 + 3 * c, el.y1], flip: false },
-      approximate: (el.flags & 4) === 0,
-    };
-  },
+  // Falstad triggers on the falling edge unless FLAG_POSITIVE_EDGE = 4. FLAG_RESET = 2 (R at E1) is not mapped.
+  "156": chipVariant(
+    (el, unit) => {
+      if (el.flags & (2 | 8 | CHIP_FLIP_FLAGS)) return null;
+      const c = chipSpacing(el);
+      if (c !== 2 * unit) return null;
+      return {
+        type: "jk-flip-flop",
+        props: { fallingEdge: (el.flags & 4) === 0 },
+        posts: 4,
+        place: { at: [el.x1, el.y1], toward: [el.x1 + 3 * c, el.y1], flip: false },
+      };
+    },
+    () => ({ sizeX: 2, sizeY: 3, pins: [W(0), W(1), W(2), E(2, 0), E(2, 2)] }),
+  ),
 
   // TimerElm (ChipElm, 3×5): dis W1, tr W3, th W4, Vcc N1, ctl S1, out E2, rst E1, gnd S2.
   // Our terminal 0 (dis) is one spacing below point1. Only the 8-pin form (FLAG_GROUND = 4).
-  "165": (el, unit) => {
-    if (!(el.flags & 4) || el.flags & CHIP_FLIP_FLAGS) return null;
-    const c = chipSpacing(el);
-    if (c !== 2 * unit) return null;
-    const at: [number, number] = [el.x1, el.y1 + c];
-    return { type: "timer-555", props: {}, posts: 4, place: { at, toward: [at[0] + c, at[1]], flip: false } };
-  },
+  "165": chipVariant(
+    (el, unit) => {
+      if (!(el.flags & 4) || el.flags & CHIP_FLIP_FLAGS) return null;
+      const c = chipSpacing(el);
+      if (c !== 2 * unit) return null;
+      const at: [number, number] = [el.x1, el.y1 + c];
+      return { type: "timer-555", props: {}, posts: 4, place: { at, toward: [at[0] + c, at[1]], flip: false } };
+    },
+    () => ({ sizeX: 3, sizeY: 5, pins: [W(1), W(3), W(4), N(1), S(5, 1), E(3, 2), E(3, 1), S(5, 2)] }),
+  ),
 
   // RelayElm: poleCount inductance coilCurrent r_on r_off onCurrent coilR [offCurrent switchingTime position].
   // Only the coil-on-both-sides drawing (FLAG_BOTH_SIDES_COIL = 4, not FLAG_SWAP_COIL = 1);
@@ -259,7 +307,7 @@ export const MORE_FALSTAD_PARTS: Record<string, Rule> = {
   // AnalogSwitchElm: r_on r_off threshold; FLAG_INVERT = 1, FLAG_PULLDOWN = 2, and flip flags
   // 4/8/16 that move the control to the other side. AnalogSwitch2Elm takes the same tokens.
   "159": analogSwitch("analog-switch"),
-  "160": analogSwitch("analog-switch-2"),
+  "160": analogSwitch("analog-switch-2", true),
 
   // JfetElm: MosfetElm tokens (threshold beta), defaults -4 V and 0.00125. Imported as a
   // depletion MOSFET: the gate junction diode is left out.
@@ -317,17 +365,20 @@ export const MORE_FALSTAD_PARTS: Record<string, Rule> = {
   },
 
   // CC2Elm (ChipElm 2×3): X at W0, Y at W2, Z at E1; then gain (after highVoltage with FLAG_CUSTOM_VOLTAGE).
-  "179": (el, unit) => {
-    if (el.flags & CHIP_FLIP_FLAGS) return null;
-    const c = chipSpacing(el);
-    if (c !== 2 * unit) return null;
-    return {
-      type: "current-conveyor",
-      props: { gain: num(el, el.flags & (1 << 13) ? 1 : 0, 1) },
-      posts: 3,
-      place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false },
-    };
-  },
+  "179": chipVariant(
+    (el, unit) => {
+      if (el.flags & CHIP_FLIP_FLAGS) return null;
+      const c = chipSpacing(el);
+      if (c !== 2 * unit) return null;
+      return {
+        type: "current-conveyor",
+        props: { gain: num(el, el.flags & (1 << 13) ? 1 : 0, 1) },
+        posts: 3,
+        place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false },
+      };
+    },
+    () => ({ sizeX: 2, sizeY: 3, pins: [W(0), W(2), E(2, 1)] }),
+  ),
 
   // VCVSElm / VCCSElm / CCVSElm / CCCSElm (ChipElm 2 wide): [highVoltage with FLAG_CUSTOM_VOLTAGE]
   // inputCount expression (escaped). Inputs on the left from point1, outputs E0 and E1.
@@ -338,24 +389,35 @@ export const MORE_FALSTAD_PARTS: Record<string, Rule> = {
 
   // SevenSegElm (ChipElm): baseSegmentCount extraSegment diodeDirection. Only the 7-segment,
   // logic-input form (direction 0): a-d at W0-W3, e-g at S1-S3 of a 4×4 chip.
-  "157": (el, unit) => {
-    const k = el.flags & (1 << 13) ? 1 : 0;
-    if (el.flags & CHIP_FLIP_FLAGS || num(el, k, 7) !== 7 || num(el, k + 1, 0) !== 0 || num(el, k + 2, 0) !== 0) return null;
-    const c = chipSpacing(el);
-    if (c !== 2 * unit) return null;
-    return { type: "seven-segment", props: {}, posts: 4, place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false } };
-  },
+  "157": chipVariant(
+    (el, unit) => {
+      const k = el.flags & (1 << 13) ? 1 : 0;
+      if (el.flags & CHIP_FLIP_FLAGS || num(el, k, 7) !== 7 || num(el, k + 1, 0) !== 0 || num(el, k + 2, 0) !== 0) return null;
+      const c = chipSpacing(el);
+      if (c !== 2 * unit) return null;
+      return { type: "seven-segment", props: {}, posts: 4, place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false } };
+    },
+    () => ({ sizeX: 4, sizeY: 4, pins: [W(0), W(1), W(2), W(3), S(4, 1), S(4, 2), S(4, 3)] }),
+  ),
 
   // DecimalDisplayElm (ChipElm 3 wide): bitCount displayMode; inputs W0.. with the MSB on top.
-  "419": (el, unit) => {
-    const k = el.flags & (1 << 13) ? 1 : 0;
-    const bits = num(el, k, 4);
-    if (el.flags & CHIP_FLIP_FLAGS || bits < 1 || bits > 16) return null;
-    const c = chipSpacing(el);
-    if (c !== 2 * unit) return null;
-    const mode = ["decimal", "hex", "octal"][num(el, k + 1, 0)] ?? "decimal";
-    return { type: "number-display", props: { bits, mode }, posts: 4, place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false } };
-  },
+  "419": chipVariant(
+    (el, unit) => {
+      const k = el.flags & (1 << 13) ? 1 : 0;
+      const bits = num(el, k, 4);
+      if (el.flags & CHIP_FLIP_FLAGS || bits < 1 || bits > 16) return null;
+      const c = chipSpacing(el);
+      if (c !== 2 * unit) return null;
+      const mode = ["decimal", "hex", "octal"][num(el, k + 1, 0)] ?? "decimal";
+      return { type: "number-display", props: { bits, mode }, posts: 4, place: { at: [el.x1, el.y1], toward: [el.x1 + c, el.y1], flip: false } };
+    },
+    (el) => {
+      const bits = num(el, el.flags & (1 << 13) ? 1 : 0, 4);
+      return bits >= 1 && bits <= 16 ? { sizeX: 3, sizeY: bits, pins: Array.from({ length: bits }, (_, i) => W(i)) } : null;
+    },
+  ),
+  ...ANALOG2_FALSTAD_PARTS,
+  ...ANALOGIC_FALSTAD_PARTS,
 };
 
 

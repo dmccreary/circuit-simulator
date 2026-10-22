@@ -1,5 +1,7 @@
 import { drawDiode } from "../diode/view";
 import { line, polyline, twoTerminalView } from "../shared/viewKit";
+import { circlePath, fillCss } from "../shared/graphics-ext";
+import { LED_CSS } from "../shared/symbols-lifelike";
 
 export const ledView = twoTerminalView(
   (g, part) => {
@@ -17,14 +19,16 @@ export const ledView = twoTerminalView(
   },
   undefined,
   {
+    // Glow in the LED's own color, brightness on a perceptual scale (ANI-17).
     drawLive(g, part, live) {
-      const b = live.get("brightness") ?? 0;
+      const b = Math.min(1, live.get("brightness") ?? 0);
       if (b <= 0) return;
       const c = (part.length ?? 4) / 2;
-      g.beginPath();
-      g.arc(c, 0, 0.9, 0, 2 * Math.PI);
-      g.closePath();
-      g.fill("glow", Math.min(1, b));
+      const color = LED_CSS[String(part.props.color ?? "red")] ?? LED_CSS.red;
+      circlePath(g, c, 0, 1.5);
+      fillCss(g, color, "glow", 0.25 * b);
+      circlePath(g, c, 0, 0.9);
+      fillCss(g, color, "glow", 0.7 * b);
     },
     describe: (part, live) => {
       const values: Record<string, string | number> = { label: part.label, color: String(part.props.color ?? "red") };

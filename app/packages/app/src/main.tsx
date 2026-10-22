@@ -5,6 +5,7 @@ import { AppController } from "./controller";
 import { rcChargingCircuit } from "./demo-circuit";
 import { prefersDark, readEmbedConfig, startEmbed } from "./embed";
 import "./styles.css";
+import { startOffline } from "./offline/register";
 
 // Embed parameters first: they choose the theme, mode and capabilities (spec §19.1).
 const config = readEmbedConfig(window);
@@ -25,6 +26,9 @@ if (config.lesson) {
     }),
   );
 }
+
+// PRF-07: the service worker, in production builds only.
+startOffline();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

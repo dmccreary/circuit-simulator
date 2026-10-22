@@ -5,6 +5,8 @@ import { SelectTool } from "./select";
 import { PlaceTool } from "./place";
 import { WireTool, type KeyboardWireHooks } from "./wire";
 import { ProbeTool } from "./probe";
+import { LoopTool } from "../law-tools/loop";
+import { JunctionTool } from "../law-tools/junction";
 
 export function createTool(spec: ToolSpec): Tool {
   switch (spec.id) {
@@ -15,13 +17,33 @@ export function createTool(spec: ToolSpec): Tool {
     case "wire":
       return new WireTool();
     case "probe-v":
-      return new ProbeTool();
+      return new ProbeTool("voltage");
+    case "probe-i":
+      return new ProbeTool("current");
+    case "probe-p":
+      return new ProbeTool("power");
+    case "loop":
+      return new LoopTool();
+    case "junction":
+      return new JunctionTool();
   }
 }
 
 /** Holds exactly one active tool and routes canvas input to it (app-shell.md §5.1). */
+/**
+ * Takes a pointer gesture before the active tool when `down` returns true
+ * (probe flags: drag, reverse, select; PRB-10). Move and up then go to it.
+ */
+export interface CanvasInterceptor {
+  down(e: CanvasPointer, tool: Tool): boolean;
+  move?(e: CanvasPointer): void;
+  up?(e: CanvasPointer): void;
+}
+
 export class ToolController {
   tool: Tool = new SelectTool();
+  readonly interceptors: CanvasInterceptor[] = [];
+  private captured: CanvasInterceptor | undefined;
   /** Last pointer position over the canvas (CSS px), so Paste can land at the pointer (EDT-22). */
   lastPointer: Point | undefined;
 
@@ -36,13 +58,19 @@ export class ToolController {
 
   pointerDown(e: CanvasPointer): void {
     this.lastPointer = { x: e.x, y: e.y };
+    this.captured = this.interceptors.find((i) => i.down(e, this.tool));
+    if (this.captured) return;
     this.tool.onPointerDown?.(e, this.ctx);
   }
   pointerMove(e: CanvasPointer): void {
     this.lastPointer = { x: e.x, y: e.y };
+    if (this.captured) return this.captured.move?.(e);
     this.tool.onPointerMove?.(e, this.ctx);
   }
   pointerUp(e: CanvasPointer): void {
+    const cap = this.captured;
+    this.captured = undefined;
+    if (cap) return cap.up?.(e);
     this.tool.onPointerUp?.(e, this.ctx);
   }
 

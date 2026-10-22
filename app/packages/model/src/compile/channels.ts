@@ -6,6 +6,15 @@ export interface ChannelContext {
   elements: Map<string, NetlistElement>;
   /** Node per top-level wire segment, "wire#segment". */
   segments: Map<string, SegmentInfo>;
+  /** Node of a wire segment inside a subcircuit instance ("u1/w3"); see subcircuit-probes.ts. */
+  innerSegment?: (wirePath: string, segment: number) => NodeIndex | undefined;
+  /** Terminal nodes of a part that is not in the netlist (a voltage readout, a ground symbol). */
+  partNodes?: (part: string) => NodeIndex[] | undefined;
+}
+
+/** Terminal nodes of a probed part, whether or not it has an engine model. */
+function terminalNodes(part: string, ctx: ChannelContext): NodeIndex[] | undefined {
+  return ctx.elements.get(part)?.nodes ?? ctx.partNodes?.(part);
 }
 
 export function resolveChannels(probes: Record<string, Probe>, ctx: ChannelContext): Record<string, ChannelSpec> {
@@ -47,12 +56,12 @@ function nodeOf(t: ProbeTarget, ctx: ChannelContext): NodeIndex | undefined {
   switch (t.kind) {
     case "point":
     case "segment":
-      return ctx.segments.get(`${t.wire}#${t.segment}`)?.node;
+      return ctx.segments.get(`${t.wire}#${t.segment}`)?.node ?? ctx.innerSegment?.(t.wire, t.segment);
     case "terminal":
-      return ctx.elements.get(t.part)?.nodes[t.terminal];
+      return terminalNodes(t.part, ctx)?.[t.terminal];
     case "across":
     case "through":
-      return ctx.elements.get(t.part)?.nodes[0];
+      return terminalNodes(t.part, ctx)?.[0];
     case "between":
       return nodeOf(t.a, ctx);
   }
@@ -65,9 +74,10 @@ function nodePair(t: ProbeTarget, ctx: ChannelContext): [NodeIndex, NodeIndex] |
     return a === undefined || b === undefined ? undefined : [a, b];
   }
   if (t.kind === "across" || t.kind === "through") {
-    const nodes = ctx.elements.get(t.part)?.nodes;
-    if (!nodes || nodes.length < 2) return undefined;
-    return [nodes[0], nodes[1]];
+    const nodes = terminalNodes(t.part, ctx);
+    if (!nodes || nodes.length === 0) return undefined;
+    // A one-terminal part (rail, voltage readout): its voltage to ground, as Falstad's scope shows.
+    return nodes.length === 1 ? [nodes[0], 0] : [nodes[0], nodes[1]];
   }
   const n = nodeOf(t, ctx);
   return n === undefined ? undefined : [n, 0];

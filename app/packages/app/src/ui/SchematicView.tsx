@@ -27,7 +27,7 @@ export function SchematicView() {
 
     const toPointer = (e: PointerEvent): CanvasPointer => {
       const rect = el.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top, button: e.button, shiftKey: e.shiftKey, time: e.timeStamp };
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top, button: e.button, shiftKey: e.shiftKey, altKey: e.altKey, time: e.timeStamp };
     };
     const down = (e: PointerEvent) => {
       el.setPointerCapture(e.pointerId);

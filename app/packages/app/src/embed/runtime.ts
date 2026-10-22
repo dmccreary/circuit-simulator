@@ -66,7 +66,8 @@ export class EmbedRuntime {
     this.state.set({ caps });
     this.c.commands.setGate((cmd) => granted(this.caps, commandCapability(cmd)));
     const tool = this.c.store.get().tool;
-    const toolId = tool.id === "place" ? "place" : tool.id;
+    // Measurement tools (current, power, Loop, Junction) come with the probe capability.
+    const toolId = tool.id === "probe-i" || tool.id === "probe-p" || tool.id === "loop" || tool.id === "junction" ? "probe-v" : tool.id;
     if (!caps.tools.includes(toolId)) this.c.setTool({ id: "select" });
   }
 

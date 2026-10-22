@@ -22,9 +22,9 @@ export const opAmpDescriptor: ElementDescriptor = {
   stretchable: { min: 2, default: OPAMP_LENGTH, terminals: [2] },
   props: [
     { key: "gain", unit: "", range: [1, 1e9], default: 100000 },
-    { key: "maxOutput", unit: "V", range: [-1e5, 1e5], default: 15 },
-    { key: "minOutput", unit: "V", range: [-1e5, 1e5], default: -15 },
-    { key: "outputResistance", unit: "ohm", range: [0, 1e6], default: 0 },
+    { key: "maxOutput", unit: "V", range: [-1e5, 1e5], default: 15, realisticDefault: 13.5 },
+    { key: "minOutput", unit: "V", range: [-1e5, 1e5], default: -15, realisticDefault: -13.5 },
+    { key: "outputResistance", unit: "ohm", range: [0, 1e6], default: 0, realisticDefault: 75 },
   ],
   readouts: [
     { key: "vPlus", unit: "V" },

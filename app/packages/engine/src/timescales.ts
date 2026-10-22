@@ -30,6 +30,15 @@ const MAX_TAU = 1e5;
 const MIN_TAU = 1e-15;
 /** Eigenvalues this far below the largest are rounding noise, not real fast modes. */
 const REL_NOISE = 1e-9;
+/** Relative accuracy of the eigenvalues themselves, against the largest of all. */
+const EIG_NOISE = 1e-13;
+/** Node shunt of the linearization (gmin), and the factor of the second, probing pass. */
+const NODE_SHUNT = 1e-12;
+const PROBE_FACTOR = 100;
+/** Real modes faster than this fraction of the slowest time scale do not limit the step. */
+const STIFF_RATIO = 1e-3;
+/** A damped oscillation's decay counts as a time scale only when shorter than this many periods. */
+const DAMPED_PERIODS = 10;
 
 export function sourcePeriods(c: Circuit): number[] {
   // The contract has no "period" query, so read the conventional prop names.
@@ -43,9 +52,22 @@ export function sourcePeriods(c: Circuit): number[] {
 
 /** Natural time scales of the circuit linearized at x: decay constants and oscillation periods. */
 export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): number[] {
+  return naturalModes(c, x, t).map((m) => m.tau);
+}
+
+function naturalModes(c: Circuit, x: Float64Array, t: number): Mode[] {
+  const a = linearModes(c, x, t, NODE_SHUNT);
+  if (a.length === 0) return a;
+  // A mode that moves with the node shunt is a reactance against a node held only by
+  // gmin (an inductor into an off diode: tau = L·gmin), not a time scale of the circuit.
+  const b = linearModes(c, x, t, NODE_SHUNT * PROBE_FACTOR);
+  return a.filter((m) => b.some((u) => u.tau > m.tau / 2 && u.tau < m.tau * 2));
+}
+
+function linearModes(c: Circuit, x: Float64Array, t: number, shunt: number): Mode[] {
   const n = c.size;
   if (n === 0) return [];
-  if (n >= SPARSE_MIN_SIZE) return modes(sparseReduced(c, x, t));
+  if (n >= SPARSE_MIN_SIZE) return modes(sparseReduced(c, x, t, shunt));
   const sys = new MnaSystem(n);
   stampStatic(c, sys);
   const view = new VectorView(x);
@@ -64,7 +86,7 @@ export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): numbe
   let scale = 1e-300;
   for (let i = 0; i < n * n; i++) scale = Math.max(scale, Math.abs(A1[i]));
   for (let i = 0; i < n * n; i++) if (Math.abs(C[i]) <= 1e-13 * scale) C[i] = 0;
-  for (let u = 0; u < c.nodeCount; u++) G[u * n + u] += 1e-12;
+  for (let u = 0; u < c.nodeCount; u++) G[u * n + u] += shunt;
 
   const S: number[] = [];
   for (let j = 0; j < n; j++) {
@@ -98,7 +120,7 @@ export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): numbe
 }
 
 /** The same reduction as above with sparse storage and SparseLU, for large circuits. */
-function sparseReduced(c: Circuit, x: Float64Array, t: number): { K: Float64Array; k: number } | null {
+function sparseReduced(c: Circuit, x: Float64Array, t: number, shunt: number): { K: Float64Array; k: number } | null {
   const n = c.size;
   const sys = new SparseMnaSystem(n, c.nodeCount);
   stampStatic(c, sys);
@@ -121,7 +143,7 @@ function sparseReduced(c: Circuit, x: Float64Array, t: number): { K: Float64Arra
   for (let s = 0; s < A1.length; s++) scale = Math.max(scale, Math.abs(A1[s]));
   for (let s = 0; s < nnz; s++) if (Math.abs(C[s]) <= 1e-13 * scale) C[s] = 0;
   // Node diagonals are the first nodeCount slots (SparseMnaSystem constructor).
-  for (let u = 0; u < c.nodeCount; u++) G[u] += 1e-12;
+  for (let u = 0; u < c.nodeCount; u++) G[u] += shunt;
 
   const colSlots: number[][] = Array.from({ length: n }, () => []);
   for (let s = 0; s < nnz; s++) if (C[s] !== 0) colSlots[cols![s]].push(s);
@@ -151,16 +173,29 @@ function sparseReduced(c: Circuit, x: Float64Array, t: number): { K: Float64Arra
   return { K, k };
 }
 
+/** One natural time scale: an oscillation period, or a decay constant (real mode or damping). */
+interface Mode {
+  tau: number;
+  oscillatory: boolean;
+}
+
 /** Time scales from the eigenvalues mu of the reduced G^-1 C (s = -1/mu). */
-function modes(reduced: { K: Float64Array; k: number } | null): number[] {
+function modes(reduced: { K: Float64Array; k: number } | null): Mode[] {
   if (!reduced) return [];
   const { K, k } = reduced;
   const eig = eigenvalues(K, k);
   if (!eig) return [];
-  const out: number[] = [];
+  const out: Mode[] = [];
+  // The noise floor follows the largest real mode: a gmin-held node's mode (C/gmin, beyond
+  // MAX_TAU) is far larger and would otherwise hide every fast mode below it.
   let largest = 0;
-  for (let i = 0; i < k; i++) largest = Math.max(largest, Math.sqrt(eig.re[i] * eig.re[i] + eig.im[i] * eig.im[i]));
-  const floor = Math.max(MIN_TAU, REL_NOISE * largest);
+  let largestAll = 0;
+  for (let i = 0; i < k; i++) {
+    const mag = Math.sqrt(eig.re[i] * eig.re[i] + eig.im[i] * eig.im[i]);
+    largestAll = Math.max(largestAll, mag);
+    if (mag < MAX_TAU) largest = Math.max(largest, mag);
+  }
+  const floor = Math.max(MIN_TAU, REL_NOISE * largest, EIG_NOISE * largestAll);
   for (let i = 0; i < k; i++) {
     const re = eig.re[i];
     const im = eig.im[i];
@@ -172,21 +207,64 @@ function modes(reduced: { K: Float64Array; k: number } | null): number[] {
     const sIm = Math.abs(im / mag2);
     if (sIm > 1e-9 * (sRe + sIm)) {
       const period = TWO_PI / sIm;
-      if (period < MAX_TAU) out.push(period);
-      if (sRe > 0 && 1 / sRe < MAX_TAU) out.push(1 / sRe);
+      if (period < MAX_TAU) out.push({ tau: period, oscillatory: true });
+      // The decay of a lightly damped oscillation (an LC tank's gmin leakage) is not a
+      // time scale anyone watches; a heavily damped one's is.
+      if (sRe > 0 && 1 / sRe < MAX_TAU && 1 / sRe < DAMPED_PERIODS * period) out.push({ tau: 1 / sRe, oscillatory: false });
     } else if (sRe > 0 && 1 / sRe < MAX_TAU) {
-      out.push(1 / sRe);
+      out.push({ tau: 1 / sRe, oscillatory: false });
     }
   }
   return out;
 }
 
 export function computeTimeScales(c: Circuit, x: Float64Array, t: number): TimeScales {
-  const taus = naturalTimeScales(c, x, t);
+  return analyzeTimeScales(c, x, t).scales;
+}
+
+/**
+ * The public time scales plus what the engine's step limit needs (§2.3).
+ * Oscillations and source periods limit the step all the time. A decaying
+ * mode limits it only while it can still matter after an event (a source
+ * edge, a switch, an edit): STIFF_TAUS of its time constants for a stiff one
+ * (far faster than the slowest behaviour: an op-amp's internal node), so it is
+ * resolved where it is excited and then stops costing steps; DECAY_TAUS for an
+ * ordinary one, long enough for a relaxation oscillator that keeps exciting it
+ * but not forever for, say, a relay coil behind an open contact.
+ */
+export interface TimeScaleAnalysis {
+  scales: TimeScales;
+  /** Fastest oscillation or source period; 0 when there is none. */
+  steady: number;
+  /** Decay time constants, fastest first, with how long after an event each limits the step (s). */
+  decays: { tau: number; window: number }[];
+}
+
+export function analyzeTimeScales(c: Circuit, x: Float64Array, t: number): TimeScaleAnalysis {
+  const found = naturalModes(c, x, t);
+  const taus = found.map((m) => m.tau);
   const periods = sourcePeriods(c);
   const all = taus.concat(periods);
-  if (all.length === 0) return { fastest: 0, dominant: 0, sourcePeriods: [], kind: "static" };
-  const fastest = all.reduce((a, b) => Math.min(a, b));
+  if (all.length === 0) return { scales: { fastest: 0, dominant: 0, sourcePeriods: [], kind: "static" }, steady: 0, decays: [] };
+  // The reported fastest scale leaves out stiff decays (far faster than the slowest behaviour),
+  // which matter only briefly; the engine still resolves them after each event (decays).
+  const slowest = all.reduce((a, b) => Math.max(a, b));
+  const limiting = found.filter((m) => m.oscillatory || m.tau >= STIFF_RATIO * slowest);
+  const fastest = limiting.map((m) => m.tau).concat(periods).reduce((a, b) => Math.min(a, b));
   const dominant = (taus.length > 0 ? taus : periods).reduce((a, b) => Math.max(a, b));
-  return { fastest, dominant, sourcePeriods: periods, kind: periods.length > 0 ? "periodic" : "transient" };
+  // Oscillations and source periods always limit the step; decays while they last.
+  const steady = found.filter((m) => m.oscillatory).map((m) => m.tau).concat(periods);
+  const decays = found
+    .filter((m) => !m.oscillatory)
+    .map((m) => ({ tau: m.tau, window: (limiting.includes(m) ? DECAY_TAUS : STIFF_TAUS) * m.tau }))
+    .sort((a, b) => a.tau - b.tau);
+  return {
+    scales: { fastest, dominant, sourcePeriods: periods, kind: periods.length > 0 ? "periodic" : "transient" },
+    steady: steady.length ? steady.reduce((a, b) => Math.min(a, b)) : 0,
+    decays,
+  };
 }
+
+/** Time constants after an event during which a stiff decay, or an ordinary one, limits the step. */
+const STIFF_TAUS = 10;
+const DECAY_TAUS = 1000;

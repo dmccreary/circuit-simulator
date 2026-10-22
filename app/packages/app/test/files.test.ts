@@ -212,3 +212,11 @@ describe("autosave and recovery through the controller", () => {
     auto3.dispose();
   });
 });
+
+test("geometry-only Falstad notes are not shown when opening a file", () => {
+  // A transformer drawn at a non-default size (from joule-thief.txt): the importer resizes it.
+  const text = "$ 1 5e-9 6.45 52 1 66\nT 288 192 336 224 6 4e-7 6 0.00089 -0.089 0.999\n";
+  const { notices, report } = readCircuitText(text, { name: "pot.txt" });
+  expect(report?.warnings.some((w) => w.message.key === "falstad.lengthChanged")).toBe(true);
+  expect(notices.map((n) => n.key)).not.toContain("falstad.lengthChanged");
+});

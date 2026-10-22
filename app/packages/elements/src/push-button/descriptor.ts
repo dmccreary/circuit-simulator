@@ -13,7 +13,7 @@ export const pushButtonDescriptor: ElementDescriptor = {
   props: [
     { key: "pressed", unit: "", kind: "boolean", default: false },
     { key: "normallyClosed", unit: "", kind: "boolean", default: false },
-    { key: "onResistance", unit: "ohm", range: [0, 1e6], default: 0 },
+    { key: "onResistance", unit: "ohm", range: [0, 1e6], default: 0, realisticDefault: 0.05 },
   ],
   readouts: [
     { key: "closed", unit: "" },

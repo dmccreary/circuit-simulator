@@ -209,6 +209,7 @@ describe("ToolController", () => {
     const id = Object.keys(h.doc.parts)[0];
     h.ctx.setTool({ id: "probe-v" });
     h.controller.pointerDown(at(4, 0));
+    h.controller.pointerUp(at(4, 0)); // placed on release: a drag makes a differential probe
     const probes = Object.values(h.doc.probes);
     expect(probes).toHaveLength(1);
     expect(probes[0]).toMatchObject({ quantity: "voltage", name: "V1", target: { kind: "terminal", part: id, terminal: 1 } });

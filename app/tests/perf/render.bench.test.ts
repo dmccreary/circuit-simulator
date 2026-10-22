@@ -99,8 +99,13 @@ describe("schematic render benchmark", () => {
     calls("symbols"); // fill the cache
     expect(report("symbols", "symbols (Path2D cache)")).toBeGreaterThan(0);
     delete (globalThis as { Path2D?: unknown }).Path2D;
-    // Live and dots layers redraw every frame: one path per node / one for all dots.
-    expect(report("live")).toBeLessThan(2 * compiled.netlist.nodeCount + 4);
+    // Voltage gradients inside parts (ANI-13) add a repaint of each part with a drop.
+    expect(report("live", "live (with part gradients)")).toBeGreaterThan(0);
+    // Live and dots layers redraw every frame: one path per node / one for all dots,
+    // plus at most two strokes per part with its own live drawing (charge marks, glow).
+    r.partGradients = false;
+    const liveParts = Object.values(doc.parts).filter((p) => getView(p.type)?.drawLive).length;
+    expect(report("live")).toBeLessThan(2 * compiled.netlist.nodeCount + 4 + 2 * liveParts);
     expect(report("dots")).toBeLessThanOrEqual(2);
     r.dispose();
   });

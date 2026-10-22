@@ -1,4 +1,4 @@
-import { AutoRange } from "./axis";
+import { AutoRange, minAutoSpan } from "./axis";
 import type { RenderScheduler } from "./scheduler";
 import { type Theme, lightTheme } from "./theme";
 import { drawAnalogLane, drawLogicLane, type LaneGeometry, type Plot, type Series } from "./chart/draw-lanes";
@@ -179,7 +179,7 @@ export class ChartRenderer {
   private range(laneId: string, unit: string): AutoRange {
     const key = `${laneId}|${unit}`;
     let r = this.ranges.get(key);
-    if (!r) this.ranges.set(key, (r = new AutoRange()));
+    if (!r) this.ranges.set(key, (r = new AutoRange(minAutoSpan(unit))));
     return r;
   }
 

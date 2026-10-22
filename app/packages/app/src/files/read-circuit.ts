@@ -33,9 +33,15 @@ export function readCircuitText(text: string, opts: { name?: string; isKnownType
     notices.push({ key: "falstad.unsupported", values: { count: report.unsupported.length, codes } });
   }
   if (report.ignored.length) notices.push({ key: "falstad.ignored", values: { count: report.ignored.length } });
-  notices.push(...report.warnings.map((w) => w.message));
+  notices.push(...report.warnings.filter((w) => !QUIET_WARNINGS.has(w.message.key)).map((w) => w.message));
   if (!Object.keys(doc.parts).length && !Object.keys(doc.wires).length && !report.unsupported.length) {
     throw new FormatError({ key: "file.notCircuit" });
   }
   return { doc, format: "falstad", notices, report };
 }
+
+/**
+ * Geometry adjustments the importer already handled exactly; they stay in the
+ * report but are not worth a dialog every time a student opens an example.
+ */
+const QUIET_WARNINGS = new Set(["falstad.lengthChanged", "falstad.offGrid", "falstad.diagonal", "falstad.lineSkipped"]);

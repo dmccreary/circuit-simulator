@@ -16,6 +16,8 @@
 
 import type { FalstadCircuit, FalstadElement, FalstadSettings } from "./text";
 import { parseXml, type XmlNode } from "./xml";
+import { readXmlModel } from "./subcircuit";
+import { CHIP_XML_PARAMS } from "./mapping-chips";
 
 /** XML tag -> text type code, for tags that are not the code itself (getXmlDumpType()). */
 const XML_TAGS: Record<string, string> = {
@@ -42,7 +44,7 @@ const MODEL_TAGS = new Set(["dm", "rlm", "tm", "mm", "clm", "ccm"]);
 
 /** One text token: an attribute with its constructor default, or a literal. */
 type Tok = [attr: string, fallback: string] | { literal: string };
-type Template = (a: Record<string, string>, flags: number) => { params: Tok[]; flags?: number };
+type Template = (a: Record<string, string>, flags: number, text?: string) => { params: Tok[]; flags?: number };
 
 const fixed =
   (...params: Tok[]): Template =>
@@ -101,6 +103,32 @@ const XML_PARAMS: Record<string, Template> = {
   // TextElm and LabeledNodeElm: the text attribute is already unescaped, so drop FLAG_ESCAPE (4).
   x: (a, f) => ({ params: [["si", "24"], { literal: a.te ?? "" }], flags: f & ~4 }),
   "207": (a, f) => ({ params: [{ literal: a.te ?? "" }], flags: f & ~4 }),
+  // SubcircuitElm: the model name (subcircuit.ts).
+  "410": fixed(["mo", "default"]),
+  // Chips (mapping-chips.ts); ROM contents come from the element text.
+  ...CHIP_XML_PARAMS,
+  // analogic parts: InvertingSchmittElm/SchmittElm, PhaseCompElm (ChipElm hv), RelayCoilElm,
+  // RelayContactElm, ThreePhaseMotorElm, TappedTransformerElm (undumpXml attribute names).
+  "182": fixed(["slr", "0.5"], ["lt", "1.66"], ["ut", "3.33"], ["lon", "5"], ["loff", "0"]),
+  "183": fixed(["slr", "0.5"], ["lt", "1.66"], ["ut", "3.33"], ["lon", "5"], ["loff", "0"]),
+  "161": (_a, f) => ({ params: f & (1 << 13) ? [["hv", "5"]] : [] }),
+  "425": fixed(["lb", "label"], ["in", "0.2"], ["ci", "0"], ["oc", "0.02"], ["cr", "20"], ["ofc", "0.015"], ["swt", "0.005"], ["tp", "0"], ["st", "0"], ["sp", "0"]),
+  "426": fixed(["lb", "label"], ["ron", "0.05"], ["roff", "1000000"], ["ip", "0"]),
+  "427": fixed(["rs", "0.435"], ["rr", "0.816"], ["ls", "0.0294"], ["lr", "0.0297"], ["lm", "0.0287"], ["b", "0.05"], ["j", "1"]),
+  "169": fixed(["in", "4"], ["ra", "1"], ["c0", "0"], ["c1", "0"], ["c2", "0"], ["co", "0.99"]),
+  // Agent analog2 parts (mapping-analog2.ts). PolarCapacitorElm: CapacitorElm's tokens with
+  // FLAG_RESISTANCE (4), then "mv". CrystalElm: one escaped sub-element dump per part of the
+  // composite (FLAG_ESCAPE = 1); the <c>/<l> state children are not read.
+  "209": (_a, f) => ({ params: [["c", "1e-5"], ["vd", "0"], ["iv", "0.001"], ["sr", "0"], ["mv", "1"]], flags: f | 4 }),
+  "412": (a, f) => ({
+    params: [`0\\s${a.pc ?? "2.87e-11"}\\s0`, `0\\s${a.sc ?? "1e-13"}\\s0`, `0\\s${a.in ?? "0.0025"}\\s0`, `0\\s${a.r ?? "6.4"}`].map((literal) => ({ literal })),
+    flags: f | 1,
+  }),
+  "187": fixed(["on", "1000"], ["of", "1e9"], ["br", "1000"], ["ho", "0.001"]),
+  "203": fixed(["ron", "500"], ["roff", "1e8"], ["bd", "30"], ["hc", "0.01"]),
+  "177": fixed({ literal: "0" }, { literal: "0" }, ["tr", "0.01"], ["ho", "0.0082"], ["gr", "50"]),
+  "206": fixed(["ti", "0.01"], ["hi", "0.0082"], ["cr", "100"], ["st", "false"]),
+  "173": fixed(["mu", "93"], ["kg", "680"]),
 };
 
 const num = (s: string | undefined, fallback: number) => {
@@ -149,6 +177,7 @@ export function parseFalstadXml(text: string): FalstadCircuit {
     }
     if (MODEL_TAGS.has(node.tag)) {
       out.models.push(node.raw);
+      if (node.tag === "ccm") (out.subcircuits ??= []).push(readXmlModel(node, readElement));
       continue;
     }
     if (a.x === undefined) continue; // test tags and anything else without a position
@@ -182,7 +211,7 @@ function readElement(node: XmlNode): FalstadElement | null {
   let params: string[] = [];
   const template = XML_PARAMS[code];
   if (template) {
-    const t = template(node.attrs, flags);
+    const t = template(node.attrs, flags, node.text);
     if (t.flags !== undefined) flags = t.flags;
     params = t.params.map((tok) => ("literal" in tok ? tok.literal : (node.attrs[tok[0]] ?? tok[1])));
   }

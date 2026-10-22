@@ -109,6 +109,9 @@ export function checkCircuit(g: Graph, na: NodeAssignment, els: El[]): Diagnosti
     for (const e of els) {
       if (e.rec.traits.currentSource) continue;
       for (const n of e.nodes) uf.union(s(e.nodes[0]), s(n));
+      // One-terminal parts (rails, logic I/O) and multi-terminal ones (op-amp outputs, gates)
+      // drive their terminals against ground, so they also give a path through ground.
+      if (e.nodes.length !== 2) uf.union(s(e.nodes[0] ?? 0), "0");
     }
     for (const c of els) {
       if (!c.rec.traits.currentSource || c.nodes.length < 2) continue;

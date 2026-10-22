@@ -47,6 +47,7 @@ export function wideGateModels(counts: readonly number[]): Record<string, ModelF
     out[`or-gate-${n}`] = factory(or, n);
     out[`nand-gate-${n}`] = factory((i) => not(and(i)), n);
     out[`nor-gate-${n}`] = factory((i) => not(or(i)), n);
+    out[`xor-gate-${n}`] = factory(xor, n);
   }
   return out;
 }

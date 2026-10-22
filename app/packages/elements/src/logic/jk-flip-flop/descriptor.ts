@@ -1,7 +1,7 @@
 import type { ElementDescriptor } from "../../api";
 import { LEVEL_PROPS, TIMING_PROPS } from "../levels";
 
-/** Rising-edge JK flip-flop: 00 hold, 10 set, 01 reset, 11 toggle. */
+/** Edge-triggered JK flip-flop (rising edge, or falling with `fallingEdge`): 00 hold, 10 set, 01 reset, 11 toggle. */
 export const jkFlipFlopDescriptor: ElementDescriptor = {
   type: "jk-flip-flop",
   category: "logic",
@@ -16,6 +16,6 @@ export const jkFlipFlopDescriptor: ElementDescriptor = {
   ],
   // Imported Falstad chips are 6 units wide: Q and Q̄ move with the length (CircuitJS1 ChipElm).
   stretchable: { min: 3, default: 4, terminals: [3, 4] },
-  props: [...TIMING_PROPS, ...LEVEL_PROPS],
+  props: [...TIMING_PROPS, ...LEVEL_PROPS, { key: "fallingEdge", unit: "", kind: "boolean", default: false }],
   readouts: [{ key: "q", unit: "" }],
 };

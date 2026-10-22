@@ -8,9 +8,12 @@ import { ChartPanel } from "./ChartPanel";
 import { Inspector } from "./Inspector";
 import { isTypingTarget } from "../commands/registry";
 import { FilesHost } from "../files/FilesHost";
+import { SubcircuitBar, SubcircuitHost } from "../subcircuit/SubcircuitHost";
+import { UpdateNotice } from "../offline/UpdateNotice";
 import { ShellLayer } from "../layout/ShellLayer";
 import { Splitter } from "../layout/Splitter";
 import { AnalysesHost } from "../analysis/ui/AnalysesHost";
+import { MeasureLayer } from "../meters/MeasureLayer";
 import { LessonSlot } from "../lesson/slot";
 import { EmbedContext, EmbedControls, usePanel, useShellClass } from "../embed/ui";
 import type { EmbedRuntime } from "../embed/runtime";
@@ -64,6 +67,7 @@ function Shell({ c }: { c: AppController }) {
         {show.palette && <Palette />}
         {show.palette && <Splitter which="palette" />}
         <div className="center">
+          <SubcircuitBar />
           <SchematicView />
           {show.chart && <Splitter which="chart" />}
           {show.chart && <ChartPanel />}
@@ -77,8 +81,11 @@ function Shell({ c }: { c: AppController }) {
         </footer>
       )}
       <FilesHost />
+      <SubcircuitHost />
+      <UpdateNotice />
       <ShellLayer />
       <AnalysesHost />
+      <MeasureLayer />
     </div>
   );
 }

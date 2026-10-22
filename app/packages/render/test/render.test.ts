@@ -1,7 +1,7 @@
 import { ViewTransform, PX_PER_GRID, MAX_ZOOM, MIN_ZOOM } from "../src/transform";
 import { HitIndex, hitTolerance } from "../src/hit-index";
 import { AutoScale, AUTO_TARGET_SPEED, SPEED_CAP, dotOffsets, phaseDelta, pointAlong, polylineLength } from "../src/dots";
-import { AutoRange, chartWindow, niceCeil, niceTicks, roundOut } from "../src/axis";
+import { AutoRange, chartWindow, minAutoSpan, niceCeil, niceTicks, roundOut } from "../src/axis";
 import { RenderScheduler, type FrameClock } from "../src/scheduler";
 import { CurrentAnimator, buildDotPaths, pathCurrent } from "../src/animator";
 import { affineFrom, applyAffine } from "../src/canvas-graphics";
@@ -211,6 +211,20 @@ describe("axis", () => {
     expect(r.update(0, 1, 0.2).max).toBe(10);
     expect(r.update(0, 1, 1.5).max).toBe(10);
     expect(r.update(0, 1, 2.3).max).toBe(2);
+  });
+
+  test("auto range never zooms below the unit's minimum span", () => {
+    // 10 pA leaking through an open switch charges 100 µF by nanovolts: draw it flat.
+    const v = new AutoRange(minAutoSpan("V"));
+    const r = v.update(0, 3.17e-7, 0);
+    expect(r.max - r.min).toBeGreaterThanOrEqual(1e-3);
+    expect(r.min).toBeLessThanOrEqual(0);
+    // A real 20 mV signal still auto-scales tightly.
+    expect(new AutoRange(minAutoSpan("V")).update(0, 0.02, 0)).toEqual({ min: 0, max: 0.05 });
+    // Microamp currents are real signals, not noise.
+    const a = new AutoRange(minAutoSpan("A")).update(0, 5e-6, 0);
+    expect(a.min).toBe(0);
+    expect(a.max).toBeCloseTo(1e-5, 15);
   });
 
   test("chart window roll and sweep", () => {

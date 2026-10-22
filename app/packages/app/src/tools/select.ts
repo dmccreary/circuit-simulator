@@ -41,6 +41,8 @@ export class SelectTool implements Tool {
     if (this.lastClick?.part === part && e.time - this.lastClick.time < DOUBLE_MS) {
       this.lastClick = undefined;
       if (this.toggle(part, ctx)) return;
+      // Double-clicking a subcircuit block looks inside it (EDT-36).
+      if (ctx.openPart?.(part)) return;
     }
     this.lastClick = { part, time: e.time };
     let sel = ctx.selection();

@@ -22,13 +22,14 @@ import {
   type Circuit,
   type FactoryLookup,
 } from "./circuit";
-import { digitalOscillationDiagnostic, floatingDiagnostic, noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
+import { digitalOscillationDiagnostic, floatingDiagnostic, leakDiagnostic, noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
 import { DigitalKernel, DigitalOscillation, type DigitalSnapshot } from "./digital/kernel";
+import { floatingGroups } from "./floating";
 import { HistoryRing } from "./history";
 import { SingularError, type LinearSolver } from "./solver";
 import { createSolver } from "./solver-factory";
 import { stampStatic, stampStep } from "./stamping";
-import { computeTimeScales, type TimeScales } from "./timescales";
+import { analyzeTimeScales, type TimeScales } from "./timescales";
 import type { Engine, EngineEvent, EngineOptions, ParamChange, PauseCondition, StepOutcome } from "./types";
 
 type Resolved = Required<Omit<EngineOptions, "solverFactory">> & { solverFactory: (size: number) => LinearSolver };
@@ -50,10 +51,27 @@ const DEFAULTS: Resolved = {
 
 const GMIN = 1e-12;
 const MAX_HALVINGS = 8; // SIM-16
+/** Node-to-ground leak conductances tried, in order, on a singular matrix that ties cannot repair. */
+const LEAK_STEPS = [1e-9, 1e-6];
+/** Damped Newton (rescue solves only): undamped iterations first, then these step fractions in turn. */
+const DAMP_AFTER = 10;
+const DAMPING = [0.5, 0.3, 0.7, 0.4];
+/** Settle-solve step lengths, as fractions of the fastest time scale, tried in turn on a singular matrix. */
+const SETTLE_HOLD = [1e-9, 1e-6, 1e-4];
+/** Pseudo-transient continuation (pseudoTransient()): pull conductances (S), settle threshold (V), solve budget. */
+const PTRAN_START = 1e-3;
+const PTRAN_MAX = 1e3;
+const PTRAN_END = 1e-12;
+const PTRAN_SETTLED = 1e-3;
+const PTRAN_MAX_SOLVES = 400;
+/** Node shunts of transient gmin stepping, largest first. */
+const GMIN_STEPS = [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12];
 const MAX_LTE_REJECTS = 30;
 const MAX_CROSSING_REFINES = 4;
 /** Digital/analog round trips at one instant before giving up (bridges fighting a threshold). */
 const MAX_SYNC_PASSES = 50;
+/** Round trips after which inputs are taken in one at a time (DigitalKernel.senseFirst). */
+const SERIAL_SYNC_AFTER = 8;
 
 interface Checkpoint {
   t: number;
@@ -66,6 +84,7 @@ interface Checkpoint {
   solver: unknown;
   /** The display state at t, as the ring stored it. */
   display: Float32Array;
+  disturbedAt: number;
 }
 
 function cloneNetlist(n: Netlist): Netlist {
@@ -127,6 +146,11 @@ class EngineImpl implements Engine {
   private checkpoints: Checkpoint[] = [];
   private sinceCheckpoint = 0;
   private dig: DigitalKernel | null = null;
+  /** Step-limit inputs from the time-scale analysis (stepLimit()). */
+  private steadyScale = 0;
+  private decays: { tau: number; window: number }[] = [];
+  /** Time of the latest disturbance: load, edit, source edge, digital change. */
+  private disturbedAt = 0;
 
   constructor(netlist: Netlist, private readonly lookup: FactoryLookup, opts: EngineOptions) {
     this.o = { ...DEFAULTS, ...opts } as Resolved;
@@ -212,14 +236,21 @@ class EngineImpl implements Engine {
 
   step(): StepOutcome {
     if (this.status === "stopped") return { ok: false, t: this.time, dt: 0, breakpoint: false };
-    try {
-      return this.dig?.pure ? this.digitalStep() : this.transientStep();
-    } catch (e) {
-      if (e instanceof SingularError || e instanceof SolveFailure || e instanceof DigitalOscillation) {
-        this.handleSolveError(e);
-        return { ok: false, t: this.time, dt: 0, breakpoint: false };
+    // A singular step that tieFloatingNodes() repaired is retried; each retry tied a new
+    // node or raised the leak, so this ends.
+    for (;;) {
+      const ties = this.c.groundTies?.length ?? 0;
+      const leak = this.c.leak ?? 0;
+      try {
+        return this.dig?.pure ? this.digitalStep() : this.transientStep();
+      } catch (e) {
+        if (e instanceof SingularError || e instanceof SolveFailure || e instanceof DigitalOscillation) {
+          this.handleSolveError(e);
+          if (this.status === "ok" && ((this.c.groundTies?.length ?? 0) > ties || (this.c.leak ?? 0) > leak)) continue;
+          return { ok: false, t: this.time, dt: 0, breakpoint: false };
+        }
+        throw e;
       }
-      throw e;
     }
   }
 
@@ -369,6 +400,7 @@ class EngineImpl implements Engine {
     if (channels) this.channelSpecs = channels;
     this.rebuildChannels();
     this.refreshTimeScales();
+    this.disturbedAt = this.time;
     this.dtNext = this.stepLimit() / 4;
     this.beLeft = this.o.beSteps;
     try {
@@ -381,6 +413,11 @@ class EngineImpl implements Engine {
         this.refreshTimeScales();
       } else {
         this.settle();
+        if (this.c.nonlinear) {
+          // Time scales of the settled operating point, not of every junction off at x = 0.
+          this.refreshTimeScales();
+          this.dtNext = this.stepLimit() / 4;
+        }
       }
       this.pushCheckpoint();
     } catch (e) {
@@ -428,19 +465,26 @@ class EngineImpl implements Engine {
   }
 
   /** Newton–Raphson (a single solve for linear circuits). Null when it does not converge. */
-  private solveAt(step: StepInfo, guess: Float64Array, shunt: number, maxIter: number): Float64Array | null {
+  private solveAt(step: StepInfo, guess: Float64Array, shunt: number, maxIter: number, damped = false, anchor?: Float64Array): Float64Array | null {
     const c = this.c;
     if (!c.nonlinear) {
-      stampStep(c, this.sys, step, null, shunt);
+      stampStep(c, this.sys, step, null, shunt, anchor);
       const x = this.linearSolve();
       return allFinite(x) ? x : null;
     }
     let xg = guess;
     for (let iter = 0; iter < maxIter; iter++) {
-      stampStep(c, this.sys, step, new VectorView(xg), shunt);
+      stampStep(c, this.sys, step, new VectorView(xg), shunt, anchor);
       const xn = this.linearSolve();
       if (!allFinite(xn)) return null;
       if (this.converged(xn, xg)) return xn;
+      if (damped && iter >= DAMP_AFTER) {
+        // Damped Newton breaks the limit cycles that junction limiting and saturating
+        // outputs can fall into: move only part way, a fraction that varies so a cycle
+        // cannot lock onto it.
+        const lambda = DAMPING[iter % DAMPING.length];
+        for (let i = 1; i < xn.length; i++) xn[i] = xg[i] + lambda * (xn[i] - xg[i]);
+      }
       xg = xn;
     }
     return null;
@@ -509,15 +553,159 @@ class EngineImpl implements Engine {
     this.commitSolution(x);
   }
 
+  /** The step the settle solve uses: backward Euler, so short that every state is held. */
+  private settleStep(hold = SETTLE_HOLD[0]): StepInfo {
+    const ts = this.timeScales;
+    const dt0 = hold * (ts.kind === "static" ? this.o.staticMaxStep : ts.fastest);
+    return { kind: "transient", t: this.time, dt: dt0, method: "be", gmin: GMIN, sourceScale: 1 };
+  }
+
   /** The settle solve without committing: the solution at this.time with states held. */
   private solveHere(): Float64Array {
     if (this.dig?.pure) return this.dig.levelsVector(this.c.size);
-    const ts = this.timeScales;
-    const dt0 = 1e-9 * (ts.kind === "static" ? this.o.staticMaxStep : ts.fastest);
-    const step: StepInfo = { kind: "transient", t: this.time, dt: dt0, method: "be", gmin: GMIN, sourceScale: 1 };
-    const x = this.solveAt(step, this.x, 0, this.o.maxNewtonIterations * 2);
+    const iters = this.o.maxNewtonIterations * 2;
+    let step = this.settleStep();
+    let x: Float64Array | null = null;
+    let singular: SingularError | null = null;
+    // Each attempt starts from the models' accepted state, not from a failed attempt's
+    // diverged Newton iterate (models keep their last iterate for voltage limiting).
+    const saved = this.c.nonlinear ? saveAllStates(this.c) : null;
+    const fresh = () => saved && loadAllStates(this.c, saved);
+    // A capacitor held by a step 1e-9 of the fastest time scale has a conductance that can
+    // swamp a kilohm next to it below the pivot tolerance; then hold it a little more loosely.
+    for (const hold of SETTLE_HOLD) {
+      step = this.settleStep(hold);
+      fresh();
+      try {
+        x = this.solveAt(step, this.x, 0, iters);
+        singular = null;
+        break;
+      } catch (e) {
+        if (!(e instanceof SingularError)) throw e;
+        singular ??= e;
+      }
+    }
+    if (singular) {
+      step = this.settleStep();
+      if (!this.c.nonlinear) throw singular;
+      fresh();
+      x = this.gminStepped(step, this.x, iters);
+      if (!x) {
+        fresh();
+        x = this.pseudoTransient(step, this.x, iters);
+      }
+      if (!x) throw singular;
+    }
+    if (!x && this.c.nonlinear) {
+      fresh();
+      x = this.gminStepped(step, this.x, iters);
+      if (!x) {
+        fresh();
+        x = this.sourceStepped(step, iters);
+      }
+      if (!x) {
+        fresh();
+        x = this.pseudoTransient(step, this.x, iters);
+      }
+    }
     if (!x) throw new SolveFailure();
     this.acceptAll(x, step);
+    return x;
+  }
+
+  /**
+   * Source stepping for a step that gmin stepping could not solve either
+   * (§2.4): ramp every source from zero to full strength, each solve starting
+   * from the last. Null when the ramp stalls.
+   */
+  private sourceStepped(step: StepInfo, iters: number): Float64Array | null {
+    const at = (scale: number, guess: Float64Array): Float64Array | null => {
+      try {
+        return this.solveAt({ ...step, sourceScale: scale }, guess, 0, iters, true);
+      } catch (e) {
+        if (e instanceof SingularError) return null;
+        throw e;
+      }
+    };
+    let x = at(0, new Float64Array(this.c.size + 1));
+    let scale = 0;
+    let ds = 0.1;
+    while (x && scale < 1) {
+      const next = Math.min(1, scale + ds);
+      const xr = at(next, x);
+      if (xr) {
+        x = xr;
+        scale = next;
+        ds = Math.min(ds * 2, 0.5);
+      } else {
+        ds /= 4;
+        if (ds < 1e-6) return null;
+      }
+    }
+    return x;
+  }
+
+  /**
+   * Pseudo-transient continuation, the last rescue for a stubborn solve: every
+   * node gets a conductance pulling it toward its previous value (a fictitious
+   * capacitor stepped by backward Euler), the solve is repeated with each
+   * result as the next anchor, and the pull is weakened as the solution settles
+   * and strengthened when a solve fails. It walks a high-gain loop (an op-amp
+   * driving MOSFETs) to its operating point where Newton alone bounces between
+   * the rails. Null if it gives up.
+   */
+  private pseudoTransient(step: StepInfo, guess: Float64Array, iters: number): Float64Array | null {
+    let x = guess;
+    let g = PTRAN_START;
+    for (let k = 0; k < PTRAN_MAX_SOLVES; k++) {
+      let xr: Float64Array | null;
+      try {
+        xr = this.solveAt(step, x, g, iters, true, x);
+      } catch (e) {
+        if (!(e instanceof SingularError)) throw e;
+        xr = null;
+      }
+      if (!xr) {
+        g *= 10;
+        if (g > PTRAN_MAX) return null;
+        continue;
+      }
+      let moved = 0;
+      for (let n = 1; n <= this.c.nodeCount; n++) moved = Math.max(moved, Math.abs(xr[n] - x[n]));
+      x = xr;
+      if (moved < PTRAN_SETTLED) {
+        g /= 10;
+        if (g < PTRAN_END) break;
+      }
+    }
+    try {
+      return this.solveAt(step, x, 0, iters, true);
+    } catch (e) {
+      if (e instanceof SingularError) return null;
+      throw e;
+    }
+  }
+
+  /**
+   * Gmin stepping for a step whose plain Newton failed (§2.4): solve with a
+   * large conductance from every node to ground, then shrink it decade by
+   * decade, each solve starting from the last. It walks Newton to the
+   * solution from a starting point where it diverged or a pivot vanished.
+   * Null when a stage fails; the final stage has no extra conductance.
+   */
+  private gminStepped(step: StepInfo, guess: Float64Array, iters: number): Float64Array | null {
+    let x = guess;
+    for (const g of [...GMIN_STEPS, 0]) {
+      let xr: Float64Array | null;
+      try {
+        xr = this.solveAt(step, x, g, iters, true);
+      } catch (e) {
+        if (e instanceof SingularError) return null;
+        throw e;
+      }
+      if (!xr) return null;
+      x = xr;
+    }
     return x;
   }
 
@@ -530,11 +718,30 @@ class EngineImpl implements Engine {
   private syncDigital(x: Float64Array): Float64Array {
     const dig = this.dig!;
     for (let pass = 0; pass < MAX_SYNC_PASSES; pass++) {
-      dig.senseAll(x);
+      if (pass < SERIAL_SYNC_AFTER) dig.senseAll(x);
+      else dig.senseFirst(x);
       if (!dig.run(this.time)) return x;
       x = this.solveHere();
     }
     throw new DigitalOscillation([], this.time);
+  }
+
+  /**
+   * Ratings (§5, RLM-05/06): after an accepted step, a model reporting a
+   * failMode has just switched into its failure; restamp and re-solve here.
+   */
+  private checkStress(step: StepInfo): void {
+    const v = new VectorView(this.x);
+    let failed = false;
+    this.c.models.forEach((m, i) => {
+      const r = m?.stress?.(v, step);
+      if (!r?.failMode) return;
+      failed = true;
+      this.events.push({ t: this.time, kind: "partFailed", element: this.c.netlist.elements[i].id, detail: r.failMode });
+    });
+    if (!failed) return;
+    stampStatic(this.c, this.sys);
+    this.afterEdit();
   }
 
   private acceptAll(x: Float64Array, step: StepInfo): void {
@@ -564,19 +771,33 @@ class EngineImpl implements Engine {
   }
 
   /**
+   * Repair a singular matrix, then re-solve; true if the circuit then solves.
    * A singular node row means that node's voltage is undefined: tie it to
-   * ground and re-solve, once per node. True if the circuit then solves.
+   * ground, once per node. A row that ties cannot fix (a branch row, or a
+   * node already tied) is numerical: a node held only by conductances far
+   * below its neighbours'. Then every node gets a small leak to ground,
+   * LEAK_STEPS in turn (CircuitJS1 gets the same effect from the 1e-8 S it
+   * puts across cut-off transistors, MosfetElm.java).
    */
   private tieFloatingNodes(first: SingularError): boolean {
-    const ties = (this.c.groundTies ??= []);
+    const c = this.c;
+    const ties = (c.groundTies ??= []);
     for (let e: unknown = first; e instanceof SingularError; ) {
       const node = e.row + 1;
-      if (node > this.c.nodeCount || ties.includes(node)) return false;
-      ties.push(node);
+      const groups = this.floatingNow();
+      if (node <= c.nodeCount && !ties.includes(node) && groups.some((g) => g.includes(node))) ties.push(node);
+      else if (groups.length) ties.push(groups[0][0]);
+      else {
+        const next = LEAK_STEPS.find((g) => g > (c.leak ?? 0));
+        if (next === undefined) return false;
+        c.leak = next;
+      }
       try {
         this.settle();
         this.pushCheckpoint();
-        this.tieDiags = [floatingDiagnostic(this.c, ties)];
+        this.tieDiags = [];
+        if (ties.length) this.tieDiags.push(floatingDiagnostic(c, ties));
+        if (c.leak) this.tieDiags.push(leakDiagnostic(c.leak));
         return true;
       } catch (err) {
         if (!(err instanceof SingularError || err instanceof SolveFailure || err instanceof DigitalOscillation)) throw err;
@@ -584,6 +805,14 @@ class EngineImpl implements Engine {
       }
     }
     return false;
+  }
+
+  /** Floating node groups of the matrix as the settle solve assembles it now (floating.ts). */
+  private floatingNow(): number[][] {
+    const step = this.settleStep();
+    stampStep(this.c, this.sys, step, this.c.nonlinear ? new VectorView(this.x) : null, 0);
+    this.hasFactored = false;
+    return floatingGroups(this.sys, this.c.nodeCount, this.c.groundTies ?? []);
   }
 
   private stop(d: Diagnostic): void {
@@ -597,6 +826,7 @@ class EngineImpl implements Engine {
   private afterEdit(): void {
     this.refreshTimeScales();
     this.beLeft = this.o.beSteps;
+    this.disturbedAt = this.time;
     this.dtNext = Math.min(this.dtNext > 0 ? this.dtNext : Infinity, this.stepLimit() / 4);
     this.checkpoints = [];
     this.sinceCheckpoint = 0;
@@ -612,7 +842,7 @@ class EngineImpl implements Engine {
   }
 
   private publishDiagnostics(): void {
-    if (!this.c.groundTies?.length) this.tieDiags = [];
+    if (!this.c.groundTies?.length && !this.c.leak) this.tieDiags = [];
     const next = [...this.solverDiags, ...this.configDiags, ...this.tieDiags];
     if (JSON.stringify(next) !== JSON.stringify(this.diagnostics)) {
       this.diagnostics = next;
@@ -621,7 +851,10 @@ class EngineImpl implements Engine {
   }
 
   private refreshTimeScales(): void {
-    this.timeScales = computeTimeScales(this.c, this.x, this.time);
+    const a = analyzeTimeScales(this.c, this.x, this.time);
+    this.timeScales = a.scales;
+    this.steadyScale = a.steady;
+    this.decays = a.decays;
     this.timeScalesVersion++;
     const max = this.netlist.settings.maxTimeStep;
     const ts = this.timeScales;
@@ -634,7 +867,16 @@ class EngineImpl implements Engine {
   /** Smallest of the time-scale limit, the manual limit, and the static fallback (§2.3). */
   private stepLimit(): number {
     const ts = this.timeScales;
-    let lim = ts.kind === "static" ? this.o.staticMaxStep : ts.fastest / 50;
+    let lim = this.o.staticMaxStep;
+    if (ts.kind !== "static") {
+      // Oscillations and source periods always; a decay only until it has died out
+      // after the latest disturbance (timescales.ts, analyzeTimeScales()).
+      let fast = this.steadyScale > 0 ? this.steadyScale : Infinity;
+      const elapsed = this.time - this.disturbedAt;
+      const active = this.decays.find((d) => elapsed < d.window);
+      if (active) fast = Math.min(fast, active.tau);
+      if (Number.isFinite(fast)) lim = fast / 50;
+    }
     const max = this.netlist.settings.maxTimeStep;
     if (max !== undefined && max > 0) lim = Math.min(lim, max);
     return lim;
@@ -652,6 +894,10 @@ class EngineImpl implements Engine {
     let lteRejects = 0;
     let refines = 0;
     let refined = false;
+    let singular: SingularError | null = null;
+    let rescued = false;
+    /** The models' state before this step, to restart a rescue from (see solveHere()). */
+    const before = saveAllStates(c);
     const bps: number[] = [];
 
     for (;;) {
@@ -673,8 +919,33 @@ class EngineImpl implements Engine {
       }
 
       const method = this.beLeft > 0 ? "be" : "trap"; // TODO: gear2 option
-      const step = this.info("transient", dt, GMIN, 1, method);
-      const x = this.solveAt(step, this.x, 0, this.o.maxNewtonIterations);
+      let step = this.info("transient", dt, GMIN, 1, method);
+      let x: Float64Array | null;
+      try {
+        x = this.solveAt(step, this.x, 0, this.o.maxNewtonIterations);
+      } catch (e) {
+        // In a nonlinear circuit a vanished pivot is usually a diverged iterate (a node held
+        // only by gmin swinging to kilovolts): retry like a failed Newton, and report the
+        // singular matrix only if every retry fails.
+        if (!(e instanceof SingularError) || !c.nonlinear) throw e;
+        singular = e;
+        x = null;
+      }
+      if (!x && (singular || hitBp) && !rescued) {
+        // Halving a step that lands on a source edge, or one whose pivot vanished, only walks
+        // toward the edge in ever smaller steps (and C/dt grows until pivots underflow).
+        // First try the same step with backward Euler, reached by gmin stepping.
+        rescued = true;
+        loadAllStates(c, before);
+        const be = this.info("transient", dt, GMIN, 1, "be");
+        const xr = this.gminStepped(be, this.x, this.o.maxNewtonIterations * 2);
+        if (xr) {
+          x = xr;
+          step = be;
+          singular = null;
+          this.beLeft = Math.max(this.beLeft, this.o.beSteps);
+        }
+      }
       if (!x) {
         if (halvings < MAX_HALVINGS) {
           halvings++;
@@ -682,8 +953,16 @@ class EngineImpl implements Engine {
           proposal = dt;
           continue;
         }
-        this.stop(noConvergenceDiagnostic(c, step.t));
-        return { ok: false, t: this.time, dt: 0, breakpoint: false };
+        // Last resort before SIM-16: a backward-Euler step reached by gmin stepping (§2.4).
+        loadAllStates(c, before);
+        step = this.info("transient", dt, GMIN, 1, "be");
+        x = this.gminStepped(step, this.x, this.o.maxNewtonIterations * 2);
+        if (!x) {
+          if (singular) throw singular;
+          this.stop(noConvergenceDiagnostic(c, step.t));
+          return { ok: false, t: this.time, dt: 0, breakpoint: false };
+        }
+        this.beLeft = Math.max(this.beLeft, this.o.beSteps);
       }
 
       const ratio = this.lteRatio(x, step);
@@ -731,12 +1010,14 @@ class EngineImpl implements Engine {
       const grow = ratio > 0 ? Math.min(2, 0.9 * pow(ratio, -1 / 3)) : 2;
       this.dtNext = hitBp || hitDig || refined ? Math.min(proposal, limit) : Math.min(dt * grow, limit);
       this.beLeft = hitBp ? this.o.beSteps : Math.max(0, this.beLeft - 1);
+      if (hitBp) this.disturbedAt = this.time;
       if (this.dig) {
         // Events due now; a changed bridge is a discontinuity, so restart with BE.
         const x2 = this.syncDigital(x);
         if (x2 !== x) {
           this.commitSolution(x2);
           this.beLeft = this.o.beSteps;
+          this.disturbedAt = this.time;
           hitBp = true;
         }
         hitBp ||= hitDig;
@@ -747,6 +1028,7 @@ class EngineImpl implements Engine {
         pause = hit.cond;
         this.events.push({ t: this.time, kind: "pauseCondition", detail: hit.cond.id });
       }
+      if (this.netlist.settings.realisticRatings) this.checkStress(step);
       return { ok: true, t: this.time, dt, breakpoint: hitBp, pause };
     }
   }
@@ -828,6 +1110,7 @@ class EngineImpl implements Engine {
       digital: this.dig ? this.dig.save() : null,
       solver: this.solver.snapshot?.(),
       display: Float32Array.from(this.display),
+      disturbedAt: this.disturbedAt,
     };
   }
 
@@ -837,6 +1120,7 @@ class EngineImpl implements Engine {
     this.x = cp.x.slice();
     this.dtNext = cp.dtNext;
     this.beLeft = cp.beLeft;
+    this.disturbedAt = cp.disturbedAt;
     if (this.dig && cp.digital) this.dig.restore(cp.digital);
     this.solver.restore?.(cp.solver);
     this.hasFactored = false;

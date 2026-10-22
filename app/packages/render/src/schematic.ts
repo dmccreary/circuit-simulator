@@ -10,6 +10,11 @@ import { RenderScheduler, type Layer } from "./scheduler";
 import { type Theme, lightTheme, voltageColor } from "./theme";
 import { AutoRange } from "./axis";
 import { formatValue } from "@cs/units";
+import { LiveEffects } from "./live-effects";
+import { findWireCrossings, type Crossing } from "./crossings";
+import { drawHops, drawPartGradients, drawPowerGlow, type LivePartAccess } from "./live-layer";
+import { logicColor, logicOfVoltage } from "./live-colors";
+import { drawPlacedLabels, placeLabels, segmentBox, type LabelRequest } from "./label-placement";
 
 /** What the renderer needs from the elements package (injected so tests stay DOM- and plug-in-free). */
 export interface ElementAccess {
@@ -82,9 +87,20 @@ export class SchematicRenderer {
   private unsubs: Array<() => void> = [];
   selection = new Set<string>();
   hover: HitTarget | undefined;
+  /** False when an overlay drawer draws the probe flags instead (the app's probe flags, PRB-09). */
+  builtinProbeFlags = true;
   coarsePointer = false;
   /** Learner setting (SET-01); views that draw only one style ignore it. */
   symbolStyle: "ansi" | "iec" | "lifelike" = "ansi";
+  /** Per-part live values: power, glow, heat (live-effects.ts). */
+  readonly live = new LiveEffects();
+  /** Voltage colors, or the Power view's warm and cool glow (ANI-16). */
+  liveMode: "voltage" | "power" = "voltage";
+  /** Color digital wires by logic level (ANI-22). */
+  logicColors = true;
+  /** Shade parts with their voltage gradient (ANI-13). */
+  partGradients = true;
+  private crossings: Crossing[] = [];
 
   constructor(
     private host: HTMLElement,
@@ -134,7 +150,9 @@ export class SchematicRenderer {
       this.termCache.set(p.id, d ? this.access.terminalPositions(p, d) : []);
     }
     this.rebuildHits();
-    this.livePlan.build(doc, this.compiled, this.termCache, this.access.getView);
+    this.live.build(doc, this.compiled);
+    this.crossings = findWireCrossings(Object.values(doc.wires));
+    this.livePlan.build(doc, this.compiled, this.termCache, this.access.getView, (id, k) => this.live.readout(id, k));
     this.requestMissingViews(doc);
     if (this.compiled) {
       this.animator.setPaths(
@@ -166,9 +184,10 @@ export class SchematicRenderer {
   }
 
   /** Latest display state from a frame (node voltages, terminal currents). */
-  setDisplay(display: Float64Array | undefined, now = performance.now() / 1000): void {
+  setDisplay(display: Float64Array | undefined, now = performance.now() / 1000, simTime?: number): void {
     this.display = display;
     this.animator.setDisplay(display);
+    this.live.update(display, now, simTime);
     if (display && this.compiled) {
       let m = 0;
       for (let i = 1; i <= this.compiled.netlist.nodeCount; i++) m = Math.max(m, Math.abs(display[i] ?? 0));
@@ -199,6 +218,11 @@ export class SchematicRenderer {
 
   terminalsOf(partId: string): Point[] {
     return this.termCache.get(partId) ?? [];
+  }
+
+  /** The display state being drawn (live, or the scrub position). */
+  get displayState(): Float64Array | undefined {
+    return this.display;
   }
 
   nodeVoltage(node: number): number | undefined {
@@ -353,21 +377,9 @@ export class SchematicRenderer {
     if (this.view.scale >= 9) {
       const fs = Math.max(10, Math.min(16, 0.6 * this.view.scale));
       ctx.font = `${fs.toFixed(0)}px ${this.theme.font}`;
-      for (const part of Object.values(doc.parts)) {
-        const lines = [part.label, ...this.canvasValues(part)].filter(Boolean);
-        if (!lines.length) continue;
-        const b = partBox(part, this.access.getView(part.type), this.access);
-        const wide = b.w >= b.h;
-        const anchor = this.view.toScreen(wide ? { x: b.x + b.w / 2, y: b.y } : { x: b.x + b.w + 0.3, y: b.y + b.h / 2 });
-        ctx.textAlign = wide ? "center" : "left";
-        ctx.textBaseline = wide ? "bottom" : "middle";
-        lines.forEach((text, i) => {
-          ctx.fillStyle = i === 0 && part.label ? this.theme.tokens.label : this.theme.tokens.value;
-          const dy = wide ? -(lines.length - 1 - i) * fs * 1.1 - 2 : (i - (lines.length - 1) / 2) * fs * 1.1;
-          ctx.fillText(text, anchor.x, anchor.y + dy);
-        });
-      }
-    }
+      this.labelPlacements = this.placeLabelBlocks(doc, ctx, fs);
+      drawPlacedLabels(ctx, this.labelPlacements, this.theme.tokens, this.selection, (id) => !!doc.parts[id]?.label);
+    } else this.labelPlacements = [];
     // Junction dots where three or more connections meet (CAN-09).
     const count = new Map<string, number>();
     const bump = (p: Point, n = 1) => void count.set(pointKey(p), (count.get(pointKey(p)) ?? 0) + n);
@@ -385,6 +397,37 @@ export class SchematicRenderer {
       ctx.arc(p.x, p.y, Math.max(2.5, 0.2 * this.view.scale), 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  /** Label blocks placed where they overlap no symbol, wire or other label (rendering.md §2.4). */
+  private labelPlacements: ReturnType<typeof placeLabels> = [];
+
+  private placeLabelBlocks(doc: CircuitDocument, ctx: CanvasRenderingContext2D, fs: number): ReturnType<typeof placeLabels> {
+    const v = this.view;
+    const toScreenBox = (b: Box): Box => {
+      const a = v.toScreen({ x: b.x, y: b.y });
+      return { x: a.x, y: a.y, w: b.w * v.scale, h: b.h * v.scale };
+    };
+    const obstacles: Box[] = [];
+    const reqs: LabelRequest[] = [];
+    for (const part of Object.values(doc.parts)) {
+      const box = toScreenBox(partBox(part, this.access.getView(part.type), this.access));
+      obstacles.push(box);
+      const lines = [part.label, ...this.canvasValues(part)].filter(Boolean);
+      if (!lines.length) continue;
+      const fixed = part.labelOffset
+        ? { x: box.x + box.w / 2 + part.labelOffset.x * v.scale, y: box.y + box.h / 2 + part.labelOffset.y * v.scale }
+        : undefined;
+      reqs.push({ id: part.id, box, lines, widths: lines.map((l) => ctx.measureText(l).width), lineHeight: fs * 1.1, fixed });
+    }
+    for (const w of Object.values(doc.wires)) {
+      for (let i = 0; i + 1 < w.points.length; i++) {
+        const a = v.toScreen(w.points[i]);
+        const b = v.toScreen(w.points[i + 1]);
+        obstacles.push(segmentBox(a.x, a.y, b.x, b.y));
+      }
+    }
+    return placeLabels(reqs, obstacles);
   }
 
   /** The part's symbol recorded as Path2D, from the cache when an identical part was drawn before. */
@@ -414,7 +457,16 @@ export class SchematicRenderer {
     const display = this.display;
     const range = this.vRange.range?.max ?? 1;
     const wireColor = this.theme.tokens.wire;
-    const color = (node: number) => (node < 0 || !display ? wireColor : voltageColor(this.theme, display[node] ?? 0, range));
+    const th = this.theme;
+    const nodes = this.compiled?.nodes;
+    const power = this.liveMode === "power";
+    // Digital nodes show logic levels (ANI-22); the power view shows plain wires (ANI-16).
+    const color = (node: number) =>
+      node < 0 || !display || power
+        ? wireColor
+        : this.logicColors && nodes?.[node] && nodes[node].kind !== "analog"
+          ? logicColor(th, logicOfVoltage(display[node] ?? 0))
+          : voltageColor(th, display[node] ?? 0, range);
     const s = v.scale;
     const ox = v.offsetX;
     const oy = v.offsetY;
@@ -429,6 +481,24 @@ export class SchematicRenderer {
         ctx.lineTo(c[i + 2] * s + ox, c[i + 3] * s + oy);
       }
       ctx.stroke();
+    }
+    drawHops(ctx, v, th, this.crossings, (c) => {
+      const p = this.doc?.wires[c.over.wire]?.points[c.over.segment];
+      return color(p ? (this.compiled?.pointToNode.get(pointKey(p)) ?? -1) : -1);
+    }, ctx.lineWidth);
+    if (display) {
+      const g = new CanvasSymbolGraphics(ctx, th, this.dpr);
+      const parts: LivePartAccess = {
+        parts: Object.values(this.doc.parts),
+        view: (t) => this.access.getView(t),
+        terminals: (id) => this.terminalsOf(id),
+        matrix: (p) => this.partMatrix(p),
+        recording: (vw, p) => (hasPath2D() ? this.symbolFor(vw, p) : undefined),
+      };
+      const colorsOn = th.voltPos.join() !== th.voltZero.join() || th.voltNeg.join() !== th.voltZero.join();
+      if (power) drawPowerGlow(g, this.live, parts);
+      else if (colorsOn && this.partGradients && this.symbolStyle !== "lifelike") drawPartGradients(g, this.live, parts, v, th, range, this.symbolStyle);
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     }
     if (display && plan.liveParts.length > 0) {
       const g = new CanvasSymbolGraphics(ctx, this.theme, this.dpr);
@@ -482,7 +552,7 @@ export class SchematicRenderer {
     }
     ctx.setLineDash([]);
     this.drawHover(ctx);
-    for (const probe of Object.values(doc.probes)) this.drawProbeFlag(ctx, probe);
+    if (this.builtinProbeFlags) for (const probe of Object.values(doc.probes)) this.drawProbeFlag(ctx, probe);
     for (const d of this.overlays) {
       ctx.save();
       d(ctx, v, this.theme);

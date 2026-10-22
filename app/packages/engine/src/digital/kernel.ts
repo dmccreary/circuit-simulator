@@ -232,6 +232,24 @@ export class DigitalKernel {
     }
   }
 
+  /**
+   * Like senseAll(), but takes in only the first input that changed. A loop
+   * of zero-delay parts closed through analog nodes (a two-inverter latch)
+   * that flips every part at once in each analog round trip settles when its
+   * inputs are taken one at a time, as a real latch resolves on its first edge.
+   */
+  senseFirst(x: Float64Array): void {
+    for (const inp of this.inputs) {
+      if (this.nets[inp.node].digital) continue;
+      const s = this.sense(inp, inp.node > 0 ? x[inp.node] : 0);
+      if (inp.known && s === inp.sensed) continue;
+      inp.sensed = s;
+      inp.known = true;
+      this.marked[inp.el] = 1;
+      return;
+    }
+  }
+
   // ------------------------------------------------------------ running
 
   /** Mark a part for evaluation (its props changed). */

@@ -4,6 +4,7 @@ import { createStore, type Store } from "../store";
 export type FilesDialog =
   | { kind: "confirm"; title: string; message: string; confirm: string; cancel: string; resolve: (ok: boolean) => void }
   | { kind: "examples" }
+  | { kind: "myCircuits" }
   | { kind: "recovery"; entries: RecoveryRecord[] }
   | { kind: "notices"; title: string; lines: string[] }
   | { kind: "link"; url: string };

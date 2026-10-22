@@ -19,6 +19,14 @@ const ITEMS: Array<string | null> = [
   null,
   "edit.label",
   "edit.addSlider",
+  null,
+  "edit.repair",
+  "edit.repairAll",
+  null,
+  "subcircuit.make",
+  "subcircuit.lookInside",
+  "subcircuit.toggleSeal",
+  "subcircuit.saveToMyParts",
 ];
 
 /** The Edit menu (spec §7.3–7.5); every item is a registered command. */

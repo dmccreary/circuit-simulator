@@ -3,6 +3,9 @@
 // kernel) and the resolver (PartTraits.digitalPins, for node kinds).
 // TODO(contract): replace with TerminalSpec.digital?: "in" | "out".
 
+import { WIDE_GATE_INPUTS } from "./gates/geometry";
+import { CHIP_DIGITAL_PINS } from "../more-parts/chips-pins";
+
 export interface DigitalPin {
   pin: number;
   dir: "in" | "out";
@@ -29,13 +32,15 @@ export const DIGITAL_PINS: Readonly<Record<string, readonly DigitalPin[]>> = {
   "jk-flip-flop": pins([0, 1, 2], [3, 4]),
   // Gates with more inputs ("and-gate-3"): inputs 0..n-1, output n.
   ...Object.fromEntries(
-    [3, 4].flatMap((n) =>
-      ["and-gate", "or-gate", "nand-gate", "nor-gate"].map((g) => [
+    WIDE_GATE_INPUTS.flatMap((n) =>
+      ["and-gate", "or-gate", "nand-gate", "nor-gate", "xor-gate"].map((g) => [
         `${g}-${n}`,
         pins(Array.from({ length: n }, (_, i) => i), [n]),
       ]),
     ),
   ),
+  // Chips (counters, multiplexers, ROM...): more-parts/chips-pins.ts.
+  ...CHIP_DIGITAL_PINS,
 };
 
 /** Digital terminal indexes of a part type, or undefined for analog parts. */

@@ -5,3 +5,4 @@ export type { PartGroup } from "./groups";
 export { localToDocument, localTerminals, terminalPositions } from "./geometry";
 export { createPartResolver } from "./resolver";
 export { isClosed } from "./shared/switchState";
+export * from "./realism";

@@ -2,6 +2,7 @@ import type { DigitalContext, ModelFactory, ReadoutSink } from "../../api";
 import { init } from "../../shared/modelKit";
 import { not, type Logic } from "../levels";
 import { LogicModel, packLogic, unpackLogic } from "../model";
+import { bool, type Props } from "../../shared/props";
 
 /**
  * Edge-triggered storage shared by the flip-flops: the stored bit and the
@@ -20,6 +21,13 @@ export abstract class FlipFlopModel extends LogicModel {
   /** True on a clean 0 → 1 clock transition; records the clock level. */
   protected risingEdge(clk: Logic): boolean {
     const edge = this.lastClk === "0" && clk === "1";
+    this.lastClk = clk;
+    return edge;
+  }
+
+  /** True on a clean 1 → 0 clock transition; records the clock level. */
+  protected fallingEdge(clk: Logic): boolean {
+    const edge = this.lastClk === "1" && clk === "0";
     this.lastClk = clk;
     return edge;
   }
@@ -44,15 +52,19 @@ export abstract class FlipFlopModel extends LogicModel {
   }
 }
 
-/** Set/reset pins read Z (unconnected) as inactive. */
-const active = (s: Logic) => s === "1";
-
+/** Set/reset pins read Z (unconnected) as inactive; `invertSetReset` makes them active-low (CircuitJS1 FLAG_INVERT_SET_RESET). */
 class DFlipFlopModel extends FlipFlopModel {
+  private activeLevel: Logic = "1";
+
+  protected override applyProps(p: Props): void {
+    this.activeLevel = bool(p, "invertSetReset", false) ? "0" : "1";
+  }
+
   evaluateDigital(ctx: DigitalContext): void {
     const d = this.read(ctx, 0);
     const clk = this.read(ctx, 1);
-    const s = active(this.read(ctx, 4));
-    const r = active(this.read(ctx, 5));
+    const s = this.read(ctx, 4) === this.activeLevel;
+    const r = this.read(ctx, 5) === this.activeLevel;
     const edge = this.risingEdge(clk);
     if (s && r) this.q = "X";
     else if (s) this.q = "1";

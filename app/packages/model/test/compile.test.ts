@@ -212,6 +212,26 @@ test("probe targets resolve to channels", () => {
   expect(c.channels.gone).toBeUndefined();
 });
 
+test("across on a one-terminal part, or a part with no engine model, reads its node to ground", () => {
+  const d = edit(rcLoop(), (x) => {
+    const at = x.parts.c1.at;
+    x.parts.rl = part("rl", "rail", at.x, at.y);
+    x.parts.gsym = part("gsym", "ground", 100, 100, { label: "" });
+    x.probes = {
+      rail: probe("rail", "voltage", { kind: "across", part: "rl" }),
+      gnd: probe("gnd", "voltage", { kind: "across", part: "gsym" }),
+    };
+  });
+  const c = C(d);
+  const railNode = el(c, "rl").nodes[0];
+  expect(railNode).toBe(el(c, "c1").nodes[0]);
+  expect(railNode).not.toBe(0);
+  expect(c.channels.rail).toEqual({ id: "rail", kind: "voltage", a: railNode, b: 0 });
+  // The ground symbol has no netlist element; its node is found from its terminal position.
+  expect(c.netlist.elements.some((e) => e.id === "gsym")).toBe(false);
+  expect(c.channels.gnd).toEqual({ id: "gnd", kind: "voltage", a: 0, b: 0 });
+});
+
 test("subcircuit instances flatten with hierarchical ids", () => {
   const d = doc([part("u1", "subcircuit", 20, 0, { label: "U1", props: { definition: "d1", pins: 2 } })], [], {
     subcircuits: {

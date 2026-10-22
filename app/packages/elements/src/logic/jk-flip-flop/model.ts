@@ -2,13 +2,20 @@ import type { DigitalContext, ModelFactory } from "../../api";
 import { init } from "../../shared/modelKit";
 import { FlipFlopModel } from "../d-flip-flop/model";
 import { not } from "../levels";
+import { bool, type Props } from "../../shared/props";
 
 class JkFlipFlopModel extends FlipFlopModel {
+  private falling = false;
+
+  protected override applyProps(p: Props): void {
+    this.falling = bool(p, "fallingEdge", false);
+  }
+
   evaluateDigital(ctx: DigitalContext): void {
     const j = this.read(ctx, 0);
     const clk = this.read(ctx, 1);
     const k = this.read(ctx, 2);
-    if (this.risingEdge(clk)) {
+    if (this.falling ? this.fallingEdge(clk) : this.risingEdge(clk)) {
       if (j === "0" && k === "0") {
         // hold
       } else if (j === "1" && k === "0") this.q = "1";

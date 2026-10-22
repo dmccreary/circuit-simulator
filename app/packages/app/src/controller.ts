@@ -1,4 +1,4 @@
-import type { CircuitDocument, CompiledCircuit, PartResolver, Point } from "@cs/model";
+import type { CircuitDocument, CompiledCircuit, MessageRef, PartResolver, Point, Transaction } from "@cs/model";
 import { classify, compile, createEditSystem, newId, normalize, paramChanges, type EditSystem } from "@cs/model";
 import { createPartResolver, getDescriptor, localToDocument, terminalPositions } from "@cs/elements";
 import { ensureTypes, getView } from "@cs/elements/views";
@@ -26,11 +26,16 @@ import { registerBuiltinCommands } from "./commands/builtin";
 import { registerAnalysisCommands } from "./analysis/commands";
 import { installFiles } from "./files/install";
 import { installShellFeatures } from "./settings/install";
+import { installRealism } from "./realism/install";
+import { installExport } from "./export/install";
+import { installMeasurement } from "./probes/install";
 import { SimClient, type WorkerPort } from "./sim/sim-client";
 import { ToolController } from "./tools/controller";
 import { ChartSession } from "./chart/session";
 import { buildChartLanes } from "./chart/lanes";
 import type { ToolContext } from "./tools/types";
+import type { SheetHooks } from "./subcircuit/sheet-hooks";
+import { installSubcircuits } from "./subcircuit/install";
 
 // ensureTypes: the renderer loads lazy part-group views itself (circuit-model.md §5.4).
 export const elementAccess: ElementAccess = { getView, getDescriptor, terminalPositions, localToDocument, ensureTypes: (t) => ensureTypes(t) };
@@ -67,6 +72,8 @@ export class AppController {
   sim: SimClient | undefined;
   /** A hidden change the compiler sees but the document does not (lesson faults, LES-07). */
   compileOverlay: ((doc: CircuitDocument) => CircuitDocument) | undefined;
+  /** Applied to each frame before anyone sees it: main-thread derived channels (segment currents). */
+  readonly frameTransforms: Array<(f: Frame) => Frame> = [];
   private lastT: number | undefined;
   private disposers: Array<() => void> = [];
 
@@ -77,8 +84,12 @@ export class AppController {
     registerBuiltinCommands(this.commands);
     registerAnalysisCommands(this.commands);
     installFiles(this);
+    installSubcircuits(this);
     this.tools = new ToolController(this.toolContext());
     installShellFeatures(this);
+    installRealism(this);
+    installExport(this);
+    installMeasurement(this);
 
     this.disposers.push(
       this.edits.onPatches((batch) => {
@@ -107,7 +118,7 @@ export class AppController {
             this.publishDiagnostics();
             this.refreshRenderers();
           },
-          frame: (f) => this.bus.publish(f),
+          frame: (f) => this.bus.publish(this.frameTransforms.reduce((g, fn) => fn(g), f)),
           message: (m) => this.onWorkerMessage(m),
           error: (msg) => this.store.set({ workerError: msg }),
         },
@@ -177,15 +188,17 @@ export class AppController {
   }
 
   private refreshRenderers(): void {
-    const doc = this.edits.doc;
+    const doc = this.sheetDoc();
     if (this.schematic) {
       this.schematic.selection = new Set(this.store.get().selection);
-      this.schematic.setCircuit(doc, this.compiled);
+      this.schematic.setCircuit(doc, this.sheetCompiled());
     }
     this.chart?.setLanes(this.chartLanes());
   }
 
   chartLanes(): ChartLane[] {
+    // Lesson blind prediction hides the traces (LES `blind: [traces]`).
+    if (this.store.get().blind?.traces) return [];
     return buildChartLanes(this.edits.doc, (id) => this.channelId(id), this.theme(), this.chartSession.ghosts);
   }
 
@@ -207,7 +220,7 @@ export class AppController {
         s.animator.advanceSimulated(f.t1 - this.lastT, typeof speed === "number" ? speed : f.effectiveSpeed || 1);
       }
       s.setRunning(running);
-      if (!scrubbing) s.setDisplay(f.display);
+      if (!scrubbing) s.setDisplay(f.display, undefined, f.t1);
     }
     this.lastT = f.t1;
   }
@@ -216,8 +229,17 @@ export class AppController {
   private compileDiagnostics: AppState["diagnostics"] = [];
   private engineDiagnostics: AppState["diagnostics"] = [];
 
+  /** Feature modules' own diagnostics (realism warnings and failures, RLM-05/06). */
+  readonly diagnosticSources = new Set<() => AppState["diagnostics"]>();
+
+  /** Re-merge diagnostics after a feature module's list changed. */
+  refreshDiagnostics(): void {
+    this.publishDiagnostics();
+  }
+
   private publishDiagnostics(): void {
-    this.store.set({ diagnostics: [...this.compileDiagnostics, ...this.engineDiagnostics] });
+    const extra = [...this.diagnosticSources].flatMap((f) => f());
+    this.store.set({ diagnostics: [...this.compileDiagnostics, ...this.engineDiagnostics, ...extra] });
   }
 
   private onWorkerMessage(m: WorkerMessage): void {
@@ -243,7 +265,7 @@ export class AppController {
   }
 
   private pruneSelection(): void {
-    const d = this.edits.doc;
+    const d = this.sheetDoc();
     const sel = this.store.get().selection;
     const kept = sel.filter((id) => d.parts[id] || d.wires[id] || d.probes[id]);
     if (kept.length !== sel.length) this.store.set({ selection: kept });
@@ -285,12 +307,48 @@ export class AppController {
     this.sim?.send({ type: "setSpeed", speed });
   }
 
+  // ------------------------------------------------------------ nested sheets (subcircuit/lens.ts)
+
+  /** Set while looking inside a subcircuit (EDT-36): the canvas shows and edits that definition. */
+  sheet: SheetHooks | undefined;
+
+  setSheet(sheet: SheetHooks | undefined): void {
+    this.sheet = sheet;
+    this.store.set({ selection: [] });
+    this.refreshRenderers();
+  }
+
+  /** The document the canvas shows: the whole circuit, or the definition being looked inside. */
+  sheetDoc(): CircuitDocument {
+    return this.sheet?.view(this.edits.doc) ?? this.edits.doc;
+  }
+
+  sheetCompiled(): CompiledCircuit | undefined {
+    return this.sheet ? this.sheet.compiled(this.edits.doc, this.compiled) : this.compiled;
+  }
+
+  /** Start an edit of what the canvas shows (the definition while looking inside). */
+  beginEdit(label: MessageRef, options?: { coalesceKey?: string }): Transaction {
+    return this.sheet ? this.sheet.begin(this.edits, label, options) : this.edits.begin(label, options);
+  }
+
+  editSheet(label: MessageRef, recipe: (d: CircuitDocument) => void, options?: { coalesceKey?: string }): void {
+    const tx = this.beginEdit(label, options);
+    try {
+      tx.update(recipe);
+      tx.commit();
+    } catch (e) {
+      tx.cancel();
+      throw e;
+    }
+  }
+
   setTool(t: ToolSpec): void {
     this.store.set({ tool: t });
   }
 
   selectedParts(): string[] {
-    const d = this.edits.doc;
+    const d = this.sheetDoc();
     return this.store.get().selection.filter((id) => d.parts[id]);
   }
 
@@ -332,9 +390,9 @@ export class AppController {
     const self = this;
     return {
       get doc() {
-        return self.edits.doc;
+        return self.sheetDoc();
       },
-      begin: (label) => self.edits.begin(label),
+      begin: (label) => self.beginEdit(label),
       hit: (p: Point) => self.schematic?.hitTest(p) ?? [],
       get view() {
         return self.schematic!.view;
@@ -353,6 +411,11 @@ export class AppController {
       invalidateView: () => self.scheduler.invalidateAll(),
       invalidateOverlay: () => self.scheduler.invalidate("overlay"),
       newId: (prefix) => newId(prefix),
+      openPart: (id) => self.commands.enabled("subcircuit.lookInside") && self.commands.run("subcircuit.lookInside", id),
+      compiled: () => self.sheetCompiled(),
+      display: () => self.schematic?.displayState ?? self.bus.latest?.display,
+      theme: () => self.theme(),
+      blind: () => self.store.get().blind?.readouts ?? false,
     };
   }
 }

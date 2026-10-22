@@ -218,6 +218,9 @@ function fixProbes(draft: CircuitDocument, remap: WireRemap | undefined): void {
 
 /** The same target (identity) if unchanged, a new one if remapped, undefined if gone. */
 function fixTarget(t: ProbeTarget, draft: CircuitDocument, remap: WireRemap | undefined): ProbeTarget | undefined {
+  // Inside a subcircuit instance ("u1/r3", circuit-model.md §6): kept while the instance exists.
+  const path = t.kind === "between" ? undefined : "part" in t ? t.part : t.wire;
+  if (path?.includes("/")) return draft.parts[path.split("/")[0]] ? t : undefined;
   switch (t.kind) {
     case "terminal":
     case "across":

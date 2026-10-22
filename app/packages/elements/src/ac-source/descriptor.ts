@@ -16,6 +16,9 @@ export const acSourceDescriptor: ElementDescriptor = {
     { key: "offset", unit: "V", range: [-1e5, 1e5], default: 0, sliderable: true },
     // Degrees; Unit has no degree symbol.
     { key: "phase", unit: "", range: [-360, 360], default: 0, sliderable: true },
+    // Small-signal stimulus for the Frequency tab (ANL-08, ANL-16); phase in degrees.
+    { key: "acMagnitude", unit: "V", range: [0, 1e5], default: 0 },
+    { key: "acPhase", unit: "", range: [-360, 360], default: 0 },
   ],
   readouts: [...VIP, { key: "frequency", unit: "Hz" }, { key: "peak", unit: "V" }, { key: "rms", unit: "V" }],
   traits: { voltageSource: true },

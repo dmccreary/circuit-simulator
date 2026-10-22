@@ -38,6 +38,7 @@ import { voltmeterDescriptor } from "./voltmeter/descriptor";
 import { ADVANCED_DESCRIPTORS } from "./advanced/registry";
 import { LOGIC_DESCRIPTORS } from "./logic/registry";
 import { MORE_DESCRIPTORS } from "./more-parts/descriptors";
+import { subcircuitDescriptor } from "./subcircuit/descriptor";
 
 /** The Essentials group, in palette order (CMP-02). Bundled with the app. */
 const ESSENTIAL_DESCRIPTORS: readonly ElementDescriptor[] = [
@@ -81,7 +82,8 @@ export function allDescriptors(): ElementDescriptor[] {
 }
 
 export function getDescriptor(type: string): ElementDescriptor | undefined {
-  return BY_TYPE.get(type);
+  // Subcircuit instances are not a palette part (no group, no model): looked up here only.
+  return BY_TYPE.get(type) ?? (type === subcircuitDescriptor.type ? subcircuitDescriptor : undefined);
 }
 
 /** The group a part type belongs to (undefined for unknown types). */

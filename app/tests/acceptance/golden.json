@@ -1,0 +1,52 @@
+{
+  "rc-charge": {
+    "hash": "df043b269ba3eb3e",
+    "steps": 156,
+    "samples": 486
+  },
+  "rlc-step": {
+    "hash": "260ddcff694c8e6b",
+    "steps": 1012,
+    "samples": 3057
+  },
+  "lc-tank": {
+    "hash": "4331bb6fcfb79bab",
+    "steps": 505,
+    "samples": 1524
+  },
+  "half-wave-rectifier": {
+    "hash": "1ff0562a212ef696",
+    "steps": 331,
+    "samples": 1007
+  },
+  "op-amp-inverting-sine": {
+    "hash": "39da672e3cab229c",
+    "steps": 152,
+    "samples": 472
+  },
+  "bjt-common-emitter": {
+    "hash": "f3a962aea383707d",
+    "steps": 502,
+    "samples": 1540
+  },
+  "timer-555-astable": {
+    "hash": "0f96ee4e5838d6f9",
+    "steps": 288,
+    "samples": 891
+  },
+  "ripple-counter-4bit": {
+    "hash": "95d1f0588d9f9201",
+    "steps": 75,
+    "samples": 798
+  },
+  "mixed-gate-rc": {
+    "hash": "6208edf7ef9e1855",
+    "steps": 1036,
+    "samples": 4447
+  },
+  "falstad-cap.txt": {
+    "hash": "aa6f9574175fa912",
+    "steps": 128,
+    "samples": 529
+  }
+}

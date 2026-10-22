@@ -4,6 +4,10 @@ import type { Annotation, CircuitDocument, MessageRef, NetLabel, Part, Point, Pr
 import { emptyDocument, makeLane, makeProbe } from "../document";
 import { FALSTAD_PARTS, LABEL_PREFIX, ONE_POST_CODES, PLACEHOLDER_TYPE, type PartMapping } from "./mapping";
 import { isFalstadXml, parseFalstadXml } from "./xml-circuit";
+import { subcircuitImport } from "./subcircuit";
+import { expandBuses } from "./bus";
+import { falstadPoints, hopRoute } from "./wire-hops";
+import { planBends, wireCorner, wireInteriors, type Bend, type DiagonalPart } from "./diagonals";
 import { parseFalstadText, unescapeFalstad, type FalstadCircuit, type FalstadElement, type FalstadSettings } from "./text";
 
 export interface FalstadImportReport {
@@ -36,6 +40,8 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
   // Text and drawings (TextElm, BoxElm, LineElm) sit anywhere; only connectable elements choose the grid.
   const placed = fc.elements.filter((e) => !GRAPHIC_CODES.has(e.code));
   const unit = chooseGrid(placed);
+  // Multi-bit buses (XML chips with bit order "bus") become one net per bit (bus.ts).
+  fc = expandBuses(fc, unit);
   const report: FalstadImportReport = {
     unsupported: [],
     warnings: [],
@@ -56,15 +62,25 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     return `${prefix}${counters[prefix]}`;
   };
 
+  /** Falstad post points, which a wire running past them must not touch (wire-hops.ts). */
+  const posts = falstadPoints(fc.elements, g);
   /** Falstad end points on our grid, where straightened parts must not land. */
   const occupied = new Set(fc.elements.flatMap((e) => [pointKey(g(e.x1, e.y1)), pointKey(g(e.x2, e.y2))]));
   let n = 0;
   const addWire = (a: Point, b: Point) => {
     if (a.x === b.x && a.y === b.y) return;
     const id = `w${++n}`;
-    const points = a.x === b.x || a.y === b.y ? [a, b] : [a, { x: b.x, y: a.y }, b];
+    const points = a.x === b.x || a.y === b.y ? [a, b] : [a, wireCorner(a, b, posts), b];
     doc.wires[id] = { id, points } satisfies Wire;
   };
+
+  // Custom subcircuits (410): definitions built from the circuit's models.
+  const subcircuits = subcircuitImport(fc, mapFalstadCircuit);
+
+  const plannedBends = planDiagonals(fc, unit, g, posts, subcircuits.rule);
+
+  /** Scopes drawn on the canvas (ScopeElm, 403), charted like the "o" lines. */
+  const embeddedScopes: FalstadCircuit["scopes"] = [];
 
   /** Falstad element index -> our part id (wires and text map to null). */
   const byIndex: (string | null)[] = [];
@@ -79,7 +95,11 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       if (el.route) {
         const pts = el.route.map(([x, y]) => g(x, y));
         for (let k = 1; k < pts.length; k++) addWire(pts[k - 1], pts[k]);
-      } else addWire(p1, p2);
+      } else {
+        const hop = hopRoute(p1, p2, posts);
+        if (hop) doc.wires[`w${++n}`] = { id: `w${n}`, points: hop } satisfies Wire;
+        else addWire(p1, p2);
+      }
       continue;
     }
     if (el.code === "207") {
@@ -92,6 +112,30 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       doc.netLabels[id] = { id, name: name || id, at: p2 } satisfies NetLabel;
       continue;
     }
+    if (el.code === "403") {
+      // ScopeElm: a scope drawn on the canvas, dumped as the "o" line's tokens joined by "_"
+      // (Scope.dump()). It becomes a chart lane like any other scope.
+      byIndex.push(null);
+      mappings.push(null);
+      const t = (el.params[0] ?? "").split("_");
+      const tok = (i: number) => Number(t[i] ?? 0) || 0;
+      embeddedScopes.push({ element: tok(0), speed: tok(1), value: tok(2), flags: tok(3), raw: el.raw });
+      continue;
+    }
+    if (el.code === "b" || el.code === "423") {
+      // BoxElm becomes a box annotation; LineElm (a drawn line) has no counterpart and is dropped.
+      byIndex.push(null);
+      mappings.push(null);
+      if (el.code === "423") {
+        report.warnings.push({ line: el.line, message: { key: "falstad.lineSkipped" } });
+        continue;
+      }
+      const id = `a${++n}`;
+      const a = g(Math.min(el.x1, el.x2), Math.min(el.y1, el.y2));
+      const b = g(Math.max(el.x1, el.x2), Math.max(el.y1, el.y2));
+      doc.annotations[id] = { id, kind: "box", at: a, size: { x: b.x - a.x, y: b.y - a.y } } satisfies Annotation;
+      continue;
+    }
     if (el.code === "x") {
       byIndex.push(null);
       mappings.push(null);
@@ -100,10 +144,10 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       continue;
     }
 
-    const rule = FALSTAD_PARTS[el.code];
+    const rule = el.code === "410" ? subcircuits.rule : FALSTAD_PARTS[el.code];
     let spec: PartMapping | null = null;
     try {
-      spec = rule ? rule(el, unit) : null;
+      spec = rule ? rule(el, unit, fc) : null;
     } catch {
       spec = null;
     }
@@ -124,7 +168,12 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       // A straightened two-terminal part keeps its far terminal connected through a wire,
       // along whichever axis leaves that terminal and wire clear of other connections.
       if (!spec.place && spec.posts === 2 && spec.fixedLength === undefined) {
-        for (const option of [geom, placement(from, toward, true)]) {
+        const bend = plannedBends.get(el);
+        if (bend) {
+          geom = placement(from, bend.bend);
+          occupied.add(pointKey(bend.bend));
+          doc.wires[`w${++n}`] = { id: `w${n}`, points: bend.path } satisfies Wire;
+        } else for (const option of [geom, placement(from, toward, true)]) {
           const end = axisEnd(from, option);
           if (occupied.has(pointKey(end)) || !segmentClear(end, toward, occupied)) continue;
           geom = option;
@@ -152,6 +201,10 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     for (const w of spec.wires ?? []) {
       for (let k = 1; k < w.length; k++) addWire(g(...w[k - 1]), g(...w[k]));
     }
+    for (const l of spec.netLabels ?? []) {
+      const lid = `n${++n}`;
+      doc.netLabels[lid] = { id: lid, name: l.name, at: g(...l.at) } satisfies NetLabel;
+    }
     if (spec.slider) {
       const sid = `vs${Object.keys(doc.sliders).length + 1}`;
       doc.sliders[sid] = { id: sid, part: id, prop: spec.slider.prop, min: spec.slider.min, max: spec.slider.max };
@@ -161,7 +214,8 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     mappings.push(spec);
   }
 
-  mapScopes(fc, doc, byIndex, report);
+  Object.assign(doc.subcircuits, subcircuits.definitions);
+  mapScopes({ ...fc, scopes: [...fc.scopes, ...embeddedScopes] }, doc, byIndex, report);
   mapSliders(fc, doc, byIndex, mappings, report);
 
   const labelOf = (i: number) => {
@@ -179,7 +233,35 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
   return { doc, report };
 }
 
-const GRAPHIC_CODES = new Set(["x", "b", "423"]);
+const GRAPHIC_CODES = new Set(["x", "b", "423", "403"]);
+
+/** Bends for the diagonal two-terminal parts, planned together (diagonals.ts). */
+function planDiagonals(
+  fc: FalstadCircuit,
+  unit: number,
+  g: (x: number, y: number) => Point,
+  posts: Set<string>,
+  composite: (el: FalstadElement, unit: number) => PartMapping | null,
+): Map<FalstadElement, Bend> {
+  const parts: DiagonalPart[] = [];
+  fc.elements.forEach((el, index) => {
+    if (el.code === "w" || el.code === "207" || GRAPHIC_CODES.has(el.code)) return;
+    const rule = el.code === "410" ? composite : FALSTAD_PARTS[el.code];
+    let spec: PartMapping | null = null;
+    try {
+      spec = rule ? rule(el, unit) : null;
+    } catch {
+      spec = null;
+    }
+    if (!spec || spec.place || spec.posts !== 2 || spec.fixedLength !== undefined) return;
+    const p1 = g(el.x1, el.y1);
+    const p2 = g(el.x2, el.y2);
+    const [from, toward] = spec.reversed ? [p2, p1] : [p1, p2];
+    if (from.x !== toward.x && from.y !== toward.y) parts.push({ index, from, toward });
+  });
+  const plan = planBends(parts, posts, wireInteriors(fc.elements, g));
+  return new Map([...plan].map(([i, bend]) => [fc.elements[i], bend]));
+}
 
 function chooseGrid(els: FalstadElement[]): number {
   const coords = els.flatMap((e) => [e.x1, e.y1, e.x2, e.y2]);

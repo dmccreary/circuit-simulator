@@ -26,6 +26,7 @@ export const LOGIC_VIEWS: Record<string, ElementView> = {
       [`or-gate-${n}`, orGateView],
       [`nand-gate-${n}`, nandGateView],
       [`nor-gate-${n}`, norGateView],
+      [`xor-gate-${n}`, xorGateView],
     ]),
   ),
 };

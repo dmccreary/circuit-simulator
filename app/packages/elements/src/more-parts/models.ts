@@ -14,6 +14,9 @@ import { timer555Model } from "../timer-555/model";
 import { transmissionLineModel } from "../transmission-line/model";
 import { voltageReadoutModel } from "../voltage-readout/model";
 import { waveformSourceModel } from "../waveform-source/model";
+import { ANALOG2_MODELS } from "./analog2-models";
+import { CHIP_MODELS } from "./chips-models";
+import { ANALOGIC_MODELS } from "./analogic-models";
 
 export const MORE_MODELS: Record<string, ModelFactory> = {
   rail: railModel,
@@ -30,4 +33,7 @@ export const MORE_MODELS: Record<string, ModelFactory> = {
   "expression-source": expressionSourceModel,
   "seven-segment": sevenSegmentModel,
   "number-display": numberDisplayModel,
+  ...ANALOG2_MODELS,
+  ...CHIP_MODELS,
+  ...ANALOGIC_MODELS,
 };

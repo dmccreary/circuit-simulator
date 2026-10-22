@@ -1,5 +1,6 @@
 import type { Part, Point } from "@cs/model";
 import type { ElementDescriptor } from "./api";
+import { decodeLayout, layoutTerminals } from "@cs/model";
 
 /**
  * Local symbol frame -> document grid: mirror y if flipped, then rotate
@@ -29,6 +30,8 @@ export function localToDocument(part: Part, p: Point): Point {
 
 /** Terminal positions in the local frame, honouring part.length for stretchable parts. */
 export function localTerminals(part: Part, d: ElementDescriptor): Point[] {
+  // Subcircuit blocks carry their own pin layout (circuit-model.md §6).
+  if (d.type === "subcircuit") return layoutTerminals(decodeLayout(part.props.pinLayout));
   const moving = d.stretchable?.terminals;
   if (d.stretchable && moving) {
     const dx = (part.length ?? d.stretchable.default) - d.stretchable.default;

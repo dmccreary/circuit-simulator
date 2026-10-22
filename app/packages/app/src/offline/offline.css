@@ -1,0 +1,1 @@
+.update-notice { position: fixed; right: 12px; bottom: 34px; z-index: 95; display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 6px; background: #1d2430; color: #fff; font: 13px system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); }

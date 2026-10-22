@@ -112,9 +112,11 @@ describe("Falstad mapper", () => {
     const [g] = byType(doc, "ground");
     expect(g).toMatchObject({ at: { x: 0, y: 4 }, orientation: { rot: 90 }, label: "" });
     expect(g.length).toBeUndefined();
+    // The diagonal wire turns at the corner whose legs pass no post: the other corner's leg
+    // would run over the Z line's post at (1, 0), where our compiler would attach it.
     expect(Object.values(doc.wires)[0].points).toEqual([
       { x: 0, y: 0 },
-      { x: 2, y: 0 },
+      { x: 0, y: 2 },
       { x: 2, y: 2 },
     ]);
     expect(Object.values(doc.annotations)[0]).toMatchObject({ at: { x: 4, y: 0 }, text: "Hello world" });

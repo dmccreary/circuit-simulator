@@ -1,4 +1,5 @@
 // The netlist compiler (design/circuit-model.md §4): document -> CompiledCircuit.
+import { pointKey } from "../netlist";
 import type { CompiledCircuit, IdentityMap, NetlistElement, NodeInfo, PartResolver, SegmentInfo } from "../netlist";
 import type { CircuitDocument } from "../types";
 import { resolveChannels } from "./channels";
@@ -6,6 +7,7 @@ import { collect } from "./collect";
 import { segmentTerms } from "./currents";
 import { checkCircuit } from "./diagnostics";
 import { assignNodes } from "./nodes";
+import { innerSegmentNodes } from "./subcircuit-probes";
 
 export function compile(doc: CircuitDocument, resolver: PartResolver, previous?: CompiledCircuit): CompiledCircuit {
   const g = collect(doc, resolver);
@@ -59,6 +61,11 @@ export function compile(doc: CircuitDocument, resolver: PartResolver, previous?:
   const channels = resolveChannels(doc.probes, {
     elements: elementById,
     segments: new Map(segments.map((s) => [`${s.wire}#${s.segment}`, s])),
+    innerSegment: innerSegmentNodes(doc, na.keyToNode),
+    partNodes: (id) => {
+      const part = doc.parts[id];
+      return part && resolver.terminals(part).map((pt) => na.keyToNode.get(pointKey(pt)) ?? 0);
+    },
   });
 
   const identity: IdentityMap = {};

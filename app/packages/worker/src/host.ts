@@ -37,10 +37,17 @@ const RUN_TICK_MS = 4;
 const MAX_TICK_GAP_MS = 100;
 const STEP_TO_EVENT_MAX_STEPS = 200000;
 
-/** Simulated seconds per real second for "Fit to circuit" (SIM-10). */
+/** Real seconds the circuit's main time scale takes at the "Fit to circuit" speed (SIM-10). */
+const FIT_SECONDS = 2;
+
+/**
+ * Simulated seconds per real second for "Fit to circuit" (SIM-10): one period of
+ * the lowest source frequency, or the circuit's main time constant, takes about
+ * two real seconds.
+ */
 export function fitSpeed(ts: TimeScales): number {
-  if (ts.kind === "periodic" && ts.sourcePeriods.length > 0) return Math.max(...ts.sourcePeriods);
-  if (ts.kind === "transient") return 5 * ts.dominant; // settles in about a second
+  if (ts.kind === "periodic" && ts.sourcePeriods.length > 0) return Math.max(...ts.sourcePeriods) / FIT_SECONDS;
+  if (ts.kind === "transient") return ts.dominant / FIT_SECONDS;
   return 1;
 }
 

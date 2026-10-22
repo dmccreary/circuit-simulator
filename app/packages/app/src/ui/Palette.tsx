@@ -3,6 +3,7 @@ import { allDescriptors, type ElementDescriptor } from "@cs/elements";
 import { useApp, useController } from "./context";
 import { t } from "../messages";
 import { usePaletteFilter } from "../embed/use-palette";
+import { MyPartsSection } from "../subcircuit/MyPartsSection";
 
 /** Parts grouped by category, Essentials first (CMP-01, CMP-02). */
 export function Palette() {
@@ -37,6 +38,7 @@ export function Palette() {
           </ul>
         </section>
       ))}
+      <MyPartsSection />
     </nav>
   );
 }

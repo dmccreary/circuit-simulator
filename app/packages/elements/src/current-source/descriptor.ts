@@ -10,7 +10,12 @@ export const currentSourceDescriptor: ElementDescriptor = {
   labelPrefix: "I",
   terminals: twoTerminals("in", "out"),
   stretchable: STRETCH,
-  props: [{ key: "current", unit: "A", range: [-1000, 1000], default: 0.01, sliderable: true, showOnCanvas: true }],
+  props: [
+    { key: "current", unit: "A", range: [-1000, 1000], default: 0.01, sliderable: true, showOnCanvas: true },
+    // Small-signal stimulus for the Frequency tab (ANL-08, ANL-16); phase in degrees.
+    { key: "acMagnitude", unit: "A", range: [0, 1e5], default: 0 },
+    { key: "acPhase", unit: "", range: [-360, 360], default: 0 },
+  ],
   readouts: VIP,
   traits: { currentSource: true },
 };

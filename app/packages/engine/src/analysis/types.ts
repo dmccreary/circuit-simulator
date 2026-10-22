@@ -69,7 +69,14 @@ export interface DcResult {
   parts: DcPartRow[];
   /** Total power delivered by parts with negative absorbed power, and absorbed by the rest (W). */
   powerDelivered: number;
+  /** Includes powerLeakage, so delivered and absorbed balance. */
   powerAbsorbed: number;
+  /**
+   * Power taken by the solver's gmin shunt from every node to ground (W): the
+   * "solver leakage" that keeps an open circuit solvable. Tiny, but without
+   * it the balance would show sources delivering picowatts no part absorbs.
+   */
+  powerLeakage?: number;
   /** Display state at the operating point (node voltages then terminal currents). */
   display: number[];
 }

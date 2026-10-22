@@ -17,12 +17,12 @@ const canvasFocused = (c: AppController) => shellOf(c).focus.store.get().canvasF
 
 function transform(c: AppController, key: string, fn: (d: CircuitDocument, ids: string[]) => void): void {
   const ids = sel(c);
-  c.edits.edit({ key }, (d) => fn(d, ids));
+  c.editSheet({ key }, (d) => fn(d, ids));
 }
 
 /** Copy to the session clipboard and, where allowed, the system clipboard as JSON. */
 function copy(c: AppController): boolean {
-  const f = makeFragment(c.edits.doc, sel(c));
+  const f = makeFragment(c.sheetDoc(), sel(c));
   if (!f) return false;
   const text = serializeFragment(f);
   const sh = shellOf(c);
@@ -46,7 +46,7 @@ function pasteOffset(c: AppController, f: CircuitFragment, n: number): { x: numb
 
 function insert(c: AppController, f: CircuitFragment, offset: { x: number; y: number }, key: string): void {
   let ids: string[] = [];
-  c.edits.edit({ key }, (d) => {
+  c.editSheet({ key }, (d) => {
     ids = pasteFragment(d, f, offset, newId, labelFor);
   });
   c.store.set({ selection: ids });
@@ -100,7 +100,7 @@ export function registerEditCommands(r: CommandRegistry<AppController>): void {
     defaultKeys: ["Mod+D"],
     when: hasSelection,
     run: (c) => {
-      const f = makeFragment(c.edits.doc, sel(c));
+      const f = makeFragment(c.sheetDoc(), sel(c));
       if (f) insert(c, f, { x: 2, y: 2 }, "edit.duplicate");
     },
   });
@@ -108,8 +108,8 @@ export function registerEditCommands(r: CommandRegistry<AppController>): void {
     id: "edit.selectAll",
     label: { key: "cmd.selectAll" },
     defaultKeys: ["Mod+A"],
-    when: (c) => Object.keys(c.edits.doc.parts).length + Object.keys(c.edits.doc.wires).length > 0,
-    run: (c) => c.store.set({ selection: [...Object.keys(c.edits.doc.parts), ...Object.keys(c.edits.doc.wires)] }),
+    when: (c) => Object.keys(c.sheetDoc().parts).length + Object.keys(c.sheetDoc().wires).length > 0,
+    run: (c) => c.store.set({ selection: [...Object.keys(c.sheetDoc().parts), ...Object.keys(c.sheetDoc().wires)] }),
   });
   r.register({
     id: "edit.rotateCCW",
@@ -144,7 +144,7 @@ export function registerEditCommands(r: CommandRegistry<AppController>): void {
         when: (c) => canvasFocused(c) && (hasSelection(c) || !!c.schematic),
         run: (c) => {
           if (hasSelection(c)) {
-            c.edits.edit({ key: "edit.nudge" }, (d) => moveSelection(d, sel(c), dx * step, dy * step), { coalesceKey: "nudge" });
+            c.editSheet({ key: "edit.nudge" }, (d) => moveSelection(d, sel(c), dx * step, dy * step), { coalesceKey: "nudge" });
           } else if (c.schematic) {
             const px = c.schematic.view.scale * step;
             c.schematic.view.panBy(-dx * px, -dy * px);
@@ -204,7 +204,7 @@ export function registerEditCommands(r: CommandRegistry<AppController>): void {
           at: center,
           orientation: { rot: 0, flip: false },
           ...(d.stretchable ? { length: d.stretchable.default } : {}),
-          props: defaultProps(d),
+          props: defaultProps(d, doc.settings.realisticParts),
         };
       });
       c.setTool({ id: "select" });

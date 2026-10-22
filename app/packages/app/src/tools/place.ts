@@ -33,7 +33,7 @@ export class PlaceTool implements Tool {
         at,
         orientation: { ...this.orientation },
         ...(d.stretchable ? { length: d.stretchable.default } : {}),
-        props: defaultProps(d),
+        props: defaultProps(d, doc.settings.realisticParts),
       };
     });
     tx.commit();

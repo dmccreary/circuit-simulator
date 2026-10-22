@@ -35,6 +35,13 @@ export interface Circuit {
    * section's absolute potential, as CircuitJS1 does.
    */
   groundTies?: number[];
+  /**
+   * Conductance from every node to ground, set only after a singular matrix
+   * that ground ties could not repair: a node held only by tiny conductances
+   * next to large ones (a MOSFET in cut-off between two conducting ones), or
+   * a singular row that maps to a branch. 0 or absent for circuits that solve.
+   */
+  leak?: number;
   /** Digital kernel hooks (§4), set by the engine when the circuit has logic parts. */
   digital?: {
     /** Bridge stamps, added to every per-step assembly. */

@@ -12,6 +12,7 @@ import "./files.css";
 
 // Not needed at startup: its own chunk, loaded on first open.
 const ExamplesDialog = lazyPanel(() => import("./ExamplesDialog").then((m) => m.ExamplesDialog));
+const MyCircuitsDialog = lazyPanel(() => import("../my-circuits/MyCircuitsDialog").then((m) => m.MyCircuitsDialog));
 
 const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
 
@@ -91,7 +92,7 @@ export function FilesHost() {
           else close();
         }}
       >
-        <Modal className={`files-modal${dialog?.kind === "examples" ? " wide" : ""}`}>
+        <Modal className={`files-modal${dialog?.kind === "examples" || dialog?.kind === "myCircuits" ? " wide" : ""}`}>
           <Dialog className="files-dialog">{dialog && <DialogBody session={s} dialog={dialog} close={close} />}</Dialog>
         </Modal>
       </ModalOverlay>
@@ -149,6 +150,8 @@ function DialogBody({ session, dialog, close }: { session: FileSession; dialog: 
       return <RecoveryBody session={session} entries={dialog.entries} close={close} />;
     case "examples":
       return <ExamplesDialog session={session} close={close} />;
+    case "myCircuits":
+      return <MyCircuitsDialog close={close} />;
   }
 }
 

@@ -22,6 +22,7 @@ export function nextLabel(doc: CircuitDocument, prefix: string): string {
   return `${prefix}${max + 1}`;
 }
 
-export function defaultProps(d: ElementDescriptor): Record<string, number | string | boolean> {
-  return Object.fromEntries(d.props.map((p) => [p.key, p.default]));
+/** Props for a new part; realistic defaults when the circuit has Realistic parts on (RLM-01). */
+export function defaultProps(d: ElementDescriptor, realistic = false): Record<string, number | string | boolean> {
+  return Object.fromEntries(d.props.map((p) => [p.key, realistic && p.realisticDefault !== undefined ? p.realisticDefault : p.default]));
 }

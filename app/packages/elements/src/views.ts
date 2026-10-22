@@ -22,6 +22,8 @@ import { resistorView } from "./resistor/view";
 import { squareSourceView } from "./square-source/view";
 import { switchView } from "./switch/view";
 import { voltmeterView } from "./voltmeter/view";
+import { styledView } from "./shared/symbol-styles";
+import { subcircuitView } from "./subcircuit/view";
 
 const ESSENTIAL_VIEWS: Record<string, ElementView> = {
   ground: groundView,
@@ -41,6 +43,7 @@ const ESSENTIAL_VIEWS: Record<string, ElementView> = {
   lamp: lampView,
   ammeter: ammeterView,
   voltmeter: voltmeterView,
+  subcircuit: subcircuitView,
 };
 
 /** One code chunk per lazy group. */
@@ -51,10 +54,18 @@ const LOADERS: Record<LazyGroup, () => Promise<Record<string, ElementView>>> = {
 };
 
 const registry = new LazyRegistry(ESSENTIAL_VIEWS, LOADERS);
+const styled = new Map<string, [ElementView, ElementView]>();
 
 /** The view of a loaded part type (Essentials, or a group already ensured). */
 export function getView(type: string): ElementView | undefined {
-  return registry.get(type);
+  const v = registry.get(type);
+  if (!v) return undefined;
+  // IEC and lifelike styles, failure damage (CAN-14, RLM-06; shared/symbol-styles.ts).
+  const hit = styled.get(type);
+  if (hit?.[0] === v) return hit[1];
+  const s = styledView(type, v);
+  styled.set(type, [v, s]);
+  return s;
 }
 
 /** Load the view groups these part types need; resolves at once when all are loaded. */

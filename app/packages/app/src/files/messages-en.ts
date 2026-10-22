@@ -49,6 +49,7 @@ export const FILES_EN: Record<string, string> = {
   "falstad.unsupported": "{count} Falstad element(s) are not supported yet and were drawn as placeholders (types: {codes}). The circuit will not run until they are replaced or removed.",
   "falstad.ignored": "{count} line(s) could not be read and were skipped.",
   "falstad.offGrid": "Some elements were off Falstad's grid and were moved to the nearest grid point.",
+  "falstad.lineSkipped": "A drawn line (decoration only) was left out.",
   "falstad.diagonal": "{part} was drawn diagonally in Falstad and was straightened.",
   "falstad.lengthChanged": "{part} changed length from {from} to {to} grid units.",
   "falstad.approximated": "{part} only approximates the Falstad element it replaces, so its behavior may differ slightly.",

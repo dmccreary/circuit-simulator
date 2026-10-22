@@ -10,6 +10,9 @@ import type { CircuitDocument, Part, Point, PropValue } from "@cs/model";
 import { mapFalstadCircuit } from "./mapper";
 import { PLACEHOLDER_TYPE } from "./mapping";
 import { escapeFalstad, parseFalstadText } from "./text";
+import { analog2Candidates } from "./export-analog2";
+import { analogicCandidates } from "./export-analogic";
+import { chipsCandidates } from "./export-chips";
 
 export interface FalstadExportReport {
   /** Parts that could not be written, by id. */
@@ -155,7 +158,7 @@ function candidates(part: Part): string[] {
     case "not-gate":
       return [line("I", P, Q(), 0, 0.5, n(part, "supply", 5))];
     default:
-      return gateCandidates(part) ?? chipCandidates(part) ?? [];
+      return gateCandidates(part) ?? chipCandidates(part) ?? analog2Candidates(part) ?? analogicCandidates(part) ?? chipsCandidates(part) ?? [];
   }
 }
 
@@ -179,9 +182,9 @@ function chipCandidates(part: Part): string[] | null {
   const at = (dx: number, dy: number): Point => ({ x: P.x + dx, y: P.y + dy });
   switch (part.type) {
     case "d-flip-flop":
-      return [line("155", P, at(1, 0), 0, 0)];
+      return [line("155", P, at(1, 0), b(part, "invertSetReset") ? 8 : 0, 0)];
     case "jk-flip-flop":
-      return [line("156", P, at(1, 0), 4, 0)];
+      return [line("156", P, at(1, 0), b(part, "fallingEdge") ? 0 : 4, 0)];
     case "timer-555":
       return [line("165", at(0, -2), at(1, -2), 4, 0)];
     case "current-conveyor":

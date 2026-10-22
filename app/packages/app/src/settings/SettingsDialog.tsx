@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { applyRealisticParts } from "../realism/realistic-parts";
 import { Button, Checkbox, FieldError, Heading, Input, Label, TextField } from "react-aria-components";
 import type { CircuitSettings } from "@cs/model";
 import { formatValue, parseValue } from "@cs/units";
@@ -16,7 +17,7 @@ const CHOICES = [
   { key: "currentDisplay", label: "settings.current", options: ["conventional", "electron", "off"], text: (v: string) => t(`settings.current.${v}`) },
   { key: "voltageColors", label: "settings.voltage", options: ["red-green", "blue-orange", "off"], text: (v: string) => t(`settings.voltage.${v}`) },
   { key: "reducedMotion", label: "settings.motion", options: ["auto", "on", "off"], text: (v: string) => t(`settings.motion.${v}`) },
-  { key: "symbolStyle", label: "settings.symbols", options: ["ansi", "iec"], text: (v: string) => t(`settings.symbols.${v}`) },
+  { key: "symbolStyle", label: "settings.symbols", options: ["ansi", "iec", "lifelike"], text: (v: string) => t(`settings.symbols.${v}`) },
   { key: "decimalSeparator", label: "settings.decimal", options: [".", ","], text: (v: string) => t(v === "," ? "settings.decimal.comma" : "settings.decimal.dot") },
 ] as Choice<keyof LearnerSettings>[];
 
@@ -72,6 +73,7 @@ function CircuitSection() {
   const set = (patch: Partial<CircuitSettings>) =>
     c.edits.edit({ key: "edit.circuitSettings" }, (d) => {
       Object.assign(d.settings, patch);
+      if (patch.realisticParts !== undefined) applyRealisticParts(d, patch.realisticParts);
       if ("maxTimeStep" in patch && patch.maxTimeStep === undefined) delete d.settings.maxTimeStep;
     });
   const shownStep = s.maxTimeStep ? formatValue(s.maxTimeStep, "s", { trimZeros: true }) : "";

@@ -6,4 +6,6 @@ export { produce, update, type ProduceResult } from "./produce";
 export { createEditSystem, type EditSystem, type EditSystemOptions, type Transaction } from "./edit";
 export { normalize, nextLabel, type NormalizeOptions } from "./normalize/normalize";
 export { compile } from "./compile/compile";
+export { resolveChannels, type ChannelContext } from "./compile/channels";
 export { classify, paramChanges, type ChangeKind, type ParamChange } from "./classify";
+export * from "./subcircuit/index";

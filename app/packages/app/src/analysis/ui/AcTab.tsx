@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AcResult } from "@cs/engine";
 import { probeColor } from "@cs/render";
 import { useDocument } from "../../ui/context";
@@ -10,6 +10,9 @@ import { NumberField, SelectField } from "./fields";
 import { useAnalysisUi, useSession, useSettings, useTheme } from "./hooks";
 import { PlotCanvas } from "./PlotCanvas";
 import { RunBar } from "./RunBar";
+import { ImpedanceView, PhasorView, TryFrequency } from "./AcViews";
+
+type AcView = "bode" | "impedance" | "phasor";
 
 const hz = (v: number) => fmt(v, "Hz", 2);
 
@@ -24,6 +27,8 @@ export function AcTab() {
   const input = set.input ?? s.defaultInput();
   const r = st.result?.kind === "ac" ? (st.result as AcResult) : undefined;
   const ghost = st.ghost?.kind === "ac" ? (st.ghost as AcResult) : undefined;
+  const [view, setView] = useState<AcView>("bode");
+  const [picked, setPicked] = useState<number | undefined>();
 
   const { gain, phase, markers } = useMemo(() => {
     const gain: PlotSeries[] = [];
@@ -62,9 +67,36 @@ export function AcTab() {
     markers: markers.filter((m) => m.kind === "phase").map((m) => ({ x: m.freq, label: m.label })),
   };
 
+  const viewPicker = (
+    <SelectField
+      label={t("analysis.view")}
+      value={view}
+      options={(["bode", "impedance", "phasor"] as AcView[]).map((v) => ({ value: v, label: t(`analysis.view.${v}`) }))}
+      onChange={(v) => setView(v)}
+    />
+  );
+  if (view === "phasor")
+    return (
+      <div className="an-tab">
+        <div className="an-form">{viewPicker}</div>
+        <PhasorView />
+      </div>
+    );
+  if (view === "impedance")
+    return (
+      <div className="an-tab">
+        <div className="an-form">
+          {viewPicker}
+          <SelectField label={t("analysis.input")} value={input} options={sources.map((p) => ({ value: p.id, label: p.label }))} onChange={(v) => patch({ input: v })} />
+        </div>
+        <ImpedanceView input={input} range={{ start: set.start, stop: set.stop, pointsPerDecade: set.pointsPerDecade, scale: set.scale }} />
+      </div>
+    );
+
   return (
     <div className="an-tab">
       <div className="an-form">
+        {viewPicker}
         <SelectField label={t("analysis.input")} value={input} options={sources.map((p) => ({ value: p.id, label: p.label }))} onChange={(v) => patch({ input: v })} />
         <NumberField label={t("analysis.start")} unit="Hz" value={set.start} min={1e-6} onCommit={(v) => patch({ start: v })} />
         <NumberField label={t("analysis.stop")} unit="Hz" value={set.stop} min={1e-6} onCommit={(v) => patch({ stop: v })} />
@@ -78,7 +110,8 @@ export function AcTab() {
       {r && !r.ok && <p className="an-note an-error">{t("analysis.noDc")}</p>}
       {(r || ghost) && (
         <>
-          <PlotCanvas spec={gainSpec} label={t("analysis.gain")} />
+          <PlotCanvas spec={{ ...gainSpec, markers: [...(gainSpec.markers ?? []), ...(picked ? [{ x: picked, label: hz(picked) }] : [])] }} label={t("analysis.gain")} onPick={setPicked} />
+          <TryFrequency freq={picked} input={input} />
           <PlotCanvas spec={phaseSpec} label={t("analysis.phase")} height={150} />
           <ul className="an-markers">
             {markers.map((m, i) => (

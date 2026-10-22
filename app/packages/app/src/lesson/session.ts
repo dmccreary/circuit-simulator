@@ -234,6 +234,10 @@ export class LessonSession {
   }
 
   private setBlindClasses(blind: readonly string[]): void {
+    // Canvas flags, hover cards, meters and the chart read this flag (blind prediction).
+    const want = { readouts: blind.includes("readouts"), traces: blind.includes("traces") };
+    const cur = this.c.store.get().blind;
+    if (cur?.readouts !== want.readouts || cur?.traces !== want.traces) this.c.store.set({ blind: want });
     const el = this.opts.shell?.();
     if (!el) return;
     for (const b of ["readouts", "traces", "animation"]) el.classList.toggle(`lesson-blind-${b}`, blind.includes(b));

@@ -3,7 +3,7 @@ import { useApp, useController } from "../ui/context";
 import { displayChord, isMacPlatform } from "../commands/keymap";
 import { t } from "../messages";
 
-const ITEMS: Array<string | null> = ["file.open", "file.examples", null, "file.save", "file.saveAs", null, "file.share"];
+const ITEMS: Array<string | null> = ["file.open", "file.examples", "file.myCircuits", null, "file.save", "file.saveAs", "file.saveToMyCircuits", null, "file.share", null, "view.exportSvg", "view.exportPng", "view.print"];
 
 /** The File menu in the top bar; every item is a registered command. */
 export function FileMenu() {

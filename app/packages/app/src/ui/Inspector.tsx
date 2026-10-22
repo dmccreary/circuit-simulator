@@ -6,6 +6,10 @@ import { formatValue, parseValue, UNIT_SYMBOL } from "@cs/units";
 import { useApp, useController, useDocument } from "./context";
 import { propLabel, t } from "../messages";
 import { SlidersPanel } from "../edit/SlidersPanel";
+import { SubcircuitPanel } from "../subcircuit/SubcircuitPanel";
+import { ProbeInspector } from "../probes/ProbeInspector";
+import { ExplainBox } from "../meters/ExplainBox";
+import { AC_HEADING, orderedProps } from "../analysis/ac-props";
 
 function NumberField({ part, spec }: { part: Part; spec: PropSpec }) {
   const c = useController();
@@ -27,7 +31,7 @@ function NumberField({ part, spec }: { part: Part; spec: PropSpec }) {
     }
     setError(undefined);
     if (v !== value) {
-      c.edits.edit({ key: "edit.setValue", values: { prop: spec.key } }, (d) => {
+      c.editSheet({ key: "edit.setValue", values: { prop: spec.key } }, (d) => {
         d.parts[part.id].props[spec.key] = v;
       });
     }
@@ -50,7 +54,7 @@ function NumberField({ part, spec }: { part: Part; spec: PropSpec }) {
 }
 
 function setProp(c: ReturnType<typeof useController>, part: Part, key: string, v: PropValue) {
-  c.edits.edit({ key: "edit.setValue", values: { prop: key } }, (d) => {
+  c.editSheet({ key: "edit.setValue", values: { prop: key } }, (d) => {
     d.parts[part.id].props[key] = v;
   });
 }
@@ -59,21 +63,26 @@ function setProp(c: ReturnType<typeof useController>, part: Part, key: string, v
 export function Inspector() {
   const c = useController();
   const selection = useApp((s) => s.selection);
-  const parts = useDocument((d) => d.parts);
+  // While looking inside a subcircuit, the parts of that definition (EDT-36).
+  const parts = useDocument((d) => (c.sheet?.view(d) ?? d).parts);
   const part = selection.length === 1 ? parts[selection[0]] : undefined;
   const d = part && getDescriptor(part.type);
+  const probes = useDocument((doc) => doc.probes);
+  const probe = selection.length === 1 ? probes[selection[0]] : undefined;
 
   return (
     <aside className="inspector" aria-label={t("inspector.title")}>
       <h2>{t("inspector.title")}</h2>
       {!part || !d ? (
-        <p className="hint">{t("inspector.empty")}</p>
+        probe ? <ProbeInspector probe={probe} /> : <p className="hint">{t("inspector.empty")}</p>
       ) : (
         <form onSubmit={(e) => e.preventDefault()} key={part.id}>
           <p className="part-title">
             <strong>{part.label || part.type}</strong> <span className="type">{part.type}</span>
           </p>
-          {d.props.map((spec) => {
+          {part.type === "subcircuit" && <SubcircuitPanel part={part} />}
+          {(part.type === "subcircuit" ? [] : orderedProps(d.props)).map((spec) => {
+            if (spec.key === AC_HEADING) return <h3 key={spec.key} className="inspector-group">{t("analysis.acHeading")}</h3>;
             const kind = spec.kind ?? "number";
             if (kind === "boolean")
               return (
@@ -106,8 +115,10 @@ export function Inspector() {
               );
             return <NumberField key={spec.key} part={part} spec={spec} />;
           })}
+          <ExplainBox partId={part.id} />
         </form>
       )}
+      {selection.length > 1 && <SubcircuitPanel />}
       <SlidersPanel />
     </aside>
   );

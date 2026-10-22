@@ -5,8 +5,8 @@
 
 /** Default input-to-output distance, grid units. */
 export const GATE_LENGTH = 4;
-/** Input counts offered as separate part types (2 is the plain gate). */
-export const WIDE_GATE_INPUTS = [3, 4] as const;
+/** Input counts offered as separate part types (2 is the plain gate; 1 is CircuitJS1's one-input gate, a buffer or inverter). */
+export const WIDE_GATE_INPUTS = [1, 3, 4, 5, 6, 7, 8] as const;
 
 /** Offsets of the inputs from the axis, in GateElm order. */
 export function inputOffsets(n: number): number[] {

@@ -1,0 +1,17 @@
+/* Subcircuits: breadcrumb bar, make dialog, inspector panel, My parts palette. */
+.subcircuit-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 8px; border-bottom: 1px solid var(--border, #d5dae1); background: var(--panel, #fff); font-size: 13px; }
+.subcircuit-bar ol { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; align-items: center; }
+.subcircuit-bar li { display: flex; gap: 6px; align-items: center; }
+.subcircuit-bar .crumb { background: none; border: none; padding: 0; color: var(--accent, #1565c0); text-decoration: underline; cursor: pointer; font: inherit; }
+.subcircuit-bar [aria-current] { font-weight: 600; }
+.subcircuit-bar .hint { opacity: 0.75; }
+.subcircuit-field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+.subcircuit-field input, .subcircuit-field select { font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }
+.subcircuit-pins { list-style: none; padding: 0; margin: 0; max-height: 40vh; overflow: auto; }
+.subcircuit-pins li { display: grid; grid-template-columns: 1fr 110px; gap: 8px; }
+.subcircuit-panel { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.subcircuit-panel .row { display: flex; flex-wrap: wrap; gap: 6px; }
+.my-parts li { display: flex; align-items: center; gap: 4px; }
+.my-parts .part-btn { flex: 1; text-transform: none; }
+.my-parts .remove { background: none; border: none; cursor: pointer; opacity: 0.6; padding: 0 4px; color: inherit; }
+.my-parts .tag { font-size: 11px; opacity: 0.7; }

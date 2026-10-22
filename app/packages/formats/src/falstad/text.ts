@@ -4,6 +4,8 @@
 // The common prefix "type x1 y1 x2 y2 flags" is CircuitElm.dump():
 // https://github.com/pfalstad/circuitjs1/blob/master/src/com/lushprojects/circuitjs1/client/CircuitElm.java
 
+import { readTextModel, type FalstadSubcircuitModel } from "./subcircuit";
+
 export interface FalstadSettings {
   flags: number; // bit 1 dots, 2 small grid, 4 hide volts, 8 power, 16 hide values, 64 adjust step, 128 DC on reset
   timeStep: number;
@@ -62,6 +64,8 @@ export interface FalstadCircuit {
   hints: FalstadHint[];
   /** Model and subcircuit definitions (`!`, `34`, `32`, `.`), kept raw. */
   models: string[];
+  /** Custom subcircuit models (`.` lines, XML <ccm>), parsed; see subcircuit.ts. */
+  subcircuits?: FalstadSubcircuitModel[];
   /** Lines that could not be read. */
   errors: { line: number; raw: string }[];
 }
@@ -113,9 +117,12 @@ export function parseFalstadText(text: string): FalstadCircuit {
         case "!":
         case "\"": // 34: diode model
         case " ": // 32: transistor model
-        case ".":
+        case ".": {
           out.models.push(raw);
+          const m = readTextModel(raw);
+          if (m) (out.subcircuits ??= []).push(m);
           return;
+        }
         case "%":
         case "?":
         case "B":

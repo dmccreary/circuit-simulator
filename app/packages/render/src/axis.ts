@@ -44,8 +44,19 @@ export class AutoRange {
   range: Range | undefined;
   private smallSince: number | undefined;
 
+  /**
+   * `minSpan` stops the scale zooming into solver-level noise: picovolt
+   * leakage through an open switch should draw as a flat line, not a ramp.
+   */
+  constructor(private readonly minSpan = 0) {}
+
   update(dataMin: number, dataMax: number, now: number): Range {
     if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return this.range ?? { min: -1, max: 1 };
+    if (dataMax - dataMin < this.minSpan) {
+      const mid = (dataMin + dataMax) / 2;
+      dataMin = mid - this.minSpan / 2;
+      dataMax = mid + this.minSpan / 2;
+    }
     const target = roundOut(dataMin, dataMax);
     const r = this.range;
     if (!r) return (this.range = target);
@@ -70,6 +81,11 @@ export class AutoRange {
     this.range = undefined;
     this.smallSince = undefined;
   }
+}
+
+/** Smallest vertical span auto-scale will show for a unit (CHT-12). */
+export function minAutoSpan(unit: string): number {
+  return unit === "V" ? 1e-3 : unit === "A" || unit === "W" ? 1e-9 : 0;
 }
 
 /** Range covering [lo, hi] with ends on 1-2-5 values; always includes 0 when close. */

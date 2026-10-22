@@ -17,6 +17,7 @@ addMessages({
   "engine.singular.node": "Node {node} has no defined voltage (singular matrix).",
   "engine.singular.branch": "The current through {element} is not defined (singular matrix).",
   "engine.stepTooLarge": "The maximum time step {maxStep} s is larger than this circuit's limit of {limit} s.",
+  "engine.leakAdded": "Some nodes were held only by tiny conductances; every node got {conductance} S to ground so the circuit could be solved.",
   "engine.floatingTied": "{count} node(s) had no path to ground and were held at 0 V: {nodes}.",
   "engine.digitalOscillation": "Logic gates with zero delay oscillate forever at t = {t} s. Give a gate a delay.",
 });

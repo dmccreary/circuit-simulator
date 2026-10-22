@@ -7,7 +7,7 @@ import type { ThemeName } from "@cs/render";
 export interface LearnerSettings {
   version: 1;
   theme: "auto" | ThemeName;
-  symbolStyle: "ansi" | "iec";
+  symbolStyle: "ansi" | "iec" | "lifelike";
   currentDisplay: "conventional" | "electron" | "off";
   voltageColors: "red-green" | "blue-orange" | "off";
   decimalSeparator: "." | ",";
@@ -62,7 +62,7 @@ export function sanitizeLearner(raw: unknown): LearnerSettings {
   return {
     version: 1,
     theme: pick(r.theme, ["auto", "light", "dark", "high-contrast"] as const, d.theme),
-    symbolStyle: pick(r.symbolStyle, ["ansi", "iec"] as const, d.symbolStyle),
+    symbolStyle: pick(r.symbolStyle, ["ansi", "iec", "lifelike"] as const, d.symbolStyle),
     currentDisplay: pick(r.currentDisplay, ["conventional", "electron", "off"] as const, d.currentDisplay),
     voltageColors: pick(r.voltageColors, ["red-green", "blue-orange", "off"] as const, d.voltageColors),
     decimalSeparator: pick(r.decimalSeparator, [".", ","] as const, d.decimalSeparator),

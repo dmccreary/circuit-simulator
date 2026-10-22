@@ -32,7 +32,7 @@ export function registerBuiltinCommands(r: CommandRegistry<AppController>): void
     defaultKeys: ["R"],
     when: (c) => c.selectedParts().length > 0,
     // EDT-21: around the selection's center (a lone part turns about its own middle).
-    run: (c) => c.edits.edit({ key: "edit.rotate" }, (d) => rotateSelection(d, c.store.get().selection, terminalsOf, true)),
+    run: (c) => c.editSheet({ key: "edit.rotate" }, (d) => rotateSelection(d, c.store.get().selection, terminalsOf, true)),
   });
   r.register({
     id: "edit.delete",
@@ -41,7 +41,7 @@ export function registerBuiltinCommands(r: CommandRegistry<AppController>): void
     when: (c) => c.store.get().selection.length > 0,
     run: (c) => {
       const sel = new Set(c.store.get().selection);
-      c.edits.edit({ key: "edit.delete" }, (d) => {
+      c.editSheet({ key: "edit.delete" }, (d) => {
         for (const id of sel) {
           delete d.parts[id];
           delete d.wires[id];

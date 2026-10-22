@@ -38,6 +38,7 @@ export const WIDE_GATE_DESCRIPTORS: ElementDescriptor[] = WIDE_GATE_INPUTS.flatM
   gate("or-gate", ["or", "or gate"], n),
   gate("nand-gate", ["nand", "nand gate"], n),
   gate("nor-gate", ["nor", "nor gate"], n),
+  gate("xor-gate", ["xor", "xor gate", "exclusive or"], n),
 ]);
 
 export const notGateDescriptor: ElementDescriptor = {

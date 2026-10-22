@@ -72,3 +72,13 @@ export function floatingDiagnostic(c: Circuit, ties: number[]): Diagnostic {
     nodes,
   };
 }
+
+/** A singular matrix was solved by adding a small conductance from every node to ground. */
+export function leakDiagnostic(g: number): Diagnostic {
+  return {
+    id: "solver-leak",
+    severity: "info",
+    message: { key: "engine.leakAdded", values: { conductance: g } },
+    elements: [],
+  };
+}

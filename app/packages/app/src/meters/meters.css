@@ -1,0 +1,172 @@
+/* Hover cards, pinned meters, multimeter and notices over the schematic. */
+.measure-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+.measure-card,
+.dmm,
+.dmm-lead,
+.measure-notices {
+  pointer-events: auto;
+}
+.measure-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: 11rem;
+  max-width: 18rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border, #d5dae1);
+  border-radius: 6px;
+  background: var(--panel, #fff);
+  color: var(--text, #1d2430);
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+.measure-card.hover {
+  opacity: 0.96;
+}
+.measure-card.pinned {
+  cursor: move;
+  border-color: var(--accent, #1565c0);
+}
+.measure-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+.measure-head > button {
+  margin-left: auto;
+}
+.measure-type,
+.measure-main {
+  color: var(--muted, #5a6372);
+}
+.measure-pin {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 0.15rem;
+}
+.measure-rows {
+  margin: 0.25rem 0 0;
+  display: grid;
+  gap: 0.1rem;
+}
+.measure-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.measure-rows dt {
+  color: var(--muted, #5a6372);
+}
+.measure-rows dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.measure-empty {
+  margin: 0.25rem 0 0;
+  color: var(--muted, #5a6372);
+}
+.measure-notices {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.35rem;
+}
+.measure-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  background: var(--text, #1d2430);
+  color: var(--panel, #fff);
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+.measure-notice button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dmm {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 13rem;
+  padding: 0.5rem;
+  border-radius: 10px;
+  background: #f2c230;
+  color: #1d2430;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.3);
+  font-size: 12px;
+}
+.dmm header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dmm header button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.dmm-display {
+  display: block;
+  margin: 0.35rem 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: #c9d6c0;
+  font: 600 22px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+  text-align: right;
+}
+.dmm-dial select {
+  width: 100%;
+}
+.dmm-jacks {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.dmm-jacks button {
+  margin-left: auto;
+}
+.dmm-note {
+  margin: 0.3rem 0 0;
+}
+.dmm-lead {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #0006;
+  cursor: grab;
+  touch-action: none;
+}
+.dmm-lead:not(.docked) {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+}
+.dmm-lead.red {
+  background: #d32f2f;
+}
+.dmm-lead.black {
+  background: #202020;
+}
+/* Lesson blind prediction (LES): numbers hidden, cards still show what they measure. */
+.lesson-blind-readouts .measure-value {
+  visibility: hidden;
+}

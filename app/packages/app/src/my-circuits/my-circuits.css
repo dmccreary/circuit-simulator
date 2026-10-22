@@ -1,0 +1,12 @@
+/* My circuits dialog (inside the file layer's modal, so it uses its tokens). */
+.my-circuits { overflow: auto; min-height: 120px; max-height: 60vh; flex: 1; }
+.my-circuits ul { list-style: none; padding: 0; margin: 0; }
+.my-circuits li { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.my-circuits li.current .my-circuits-thumb { border-color: var(--accent); }
+.my-circuits-thumb { flex: none; width: 120px; height: 75px; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); cursor: pointer; }
+.my-circuits-thumb img { width: 100%; height: 100%; display: block; }
+.my-circuits-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.my-circuits-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-circuits-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.my-circuits .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.my-circuits .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

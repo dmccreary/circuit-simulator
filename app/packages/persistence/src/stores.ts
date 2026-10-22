@@ -29,6 +29,8 @@ export interface CircuitRecord {
   name: string;
   text: string;
   thumbnail?: Blob;
+  /** Small SVG drawing of the schematic; plain text, so it clones and stores anywhere. */
+  thumbnailSvg?: string;
   changedAt: number;
 }
 
@@ -49,6 +51,7 @@ export interface EmbedRecord {
   changedAt: number;
 }
 
+/** A My parts entry (EDT-35); `definition` is a DefinitionBundle from @cs/model. */
 export interface SubcircuitRecord {
   id: string;
   name: string;

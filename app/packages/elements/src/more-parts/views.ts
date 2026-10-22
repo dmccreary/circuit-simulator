@@ -14,6 +14,9 @@ import { timer555View } from "../timer-555/view";
 import { transmissionLineView } from "../transmission-line/view";
 import { voltageReadoutView } from "../voltage-readout/view";
 import { waveformSourceView } from "../waveform-source/view";
+import { ANALOG2_VIEWS } from "./analog2-views";
+import { CHIP_VIEWS } from "./chips-views";
+import { ANALOGIC_VIEWS } from "./analogic-views";
 
 export const MORE_VIEWS: Record<string, ElementView> = {
   rail: railView,
@@ -30,4 +33,7 @@ export const MORE_VIEWS: Record<string, ElementView> = {
   "expression-source": expressionSourceView,
   "seven-segment": sevenSegmentView,
   "number-display": numberDisplayView,
+  ...ANALOG2_VIEWS,
+  ...CHIP_VIEWS,
+  ...ANALOGIC_VIEWS,
 };

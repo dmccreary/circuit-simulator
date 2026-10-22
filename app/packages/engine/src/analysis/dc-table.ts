@@ -3,7 +3,7 @@
 
 import type { Netlist } from "@cs/model";
 import { fillDisplay, VectorView, type FactoryLookup } from "../circuit";
-import { operatingPoint } from "./dc-op";
+import { GMIN, operatingPoint } from "./dc-op";
 import type { DcPartRow, DcResult } from "./types";
 
 export function dcTable(netlist: Netlist, lookup: FactoryLookup): DcResult {
@@ -34,5 +34,19 @@ export function dcTable(netlist: Netlist, lookup: FactoryLookup): DcResult {
     else absorbed += power;
     parts.push({ id: el.id, type: el.type, voltage, current, power, readouts });
   });
-  return { kind: "dc", ok: true, nodes, parts, powerDelivered: delivered, powerAbsorbed: absorbed, display: Array.from(display) };
+  // The operating point's node shunts (dc-op.ts) absorb gmin·V² each: the solver leakage.
+  let leakage = 0;
+  for (let n = 1; n <= c.nodeCount; n++) leakage += GMIN * op.x[n] * op.x[n];
+  for (const n of c.idleNodes) leakage += 1e-12 * op.x[n] * op.x[n]; // the idle-node hold, also in dc-op.ts
+  absorbed += leakage;
+  return {
+    kind: "dc",
+    ok: true,
+    nodes,
+    parts,
+    powerDelivered: delivered,
+    powerAbsorbed: absorbed,
+    powerLeakage: leakage,
+    display: Array.from(display),
+  };
 }

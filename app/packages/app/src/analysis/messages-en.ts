@@ -35,7 +35,7 @@ export const ANALYSIS_EN: Record<string, string> = {
   "analysis.current": "Current",
   "analysis.power": "Power",
   "analysis.region": "Region",
-  "analysis.balance": "Power balance: sources deliver {delivered}, parts absorb {absorbed}.",
+  "analysis.balance": "Power balance: sources deliver {delivered}, parts absorb {absorbed} (including {leakage} of solver leakage to ground).",
   "analysis.input": "Input",
   "analysis.start": "Start",
   "analysis.stop": "Stop",

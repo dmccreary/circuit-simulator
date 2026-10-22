@@ -102,8 +102,9 @@ describe("Falstad placement of the added parts", () => {
   });
 
   test("parts whose posts cannot land on our grid stay placeholders", () => {
-    // A normal-size gate in an 8-pixel circuit: its inputs would be two units apart.
-    const { report } = importFalstad("150 256 160 352 160 0 2 0\nw 0 8 16 8 0\n");
+    // A De Morgan gate (FLAG_DEMORGAN = 8) has no part. Normal-size gates in an 8-pixel
+    // circuit are wired to ours instead (falstad-variants.test.ts).
+    const { report } = importFalstad("150 256 160 352 160 8 2 0\nw 0 8 16 8 0\n");
     expect(report.unsupported.map((u) => u.code)).toEqual(["150"]);
   });
 });

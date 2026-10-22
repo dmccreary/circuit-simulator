@@ -8,8 +8,12 @@
 // Parameters listed below are the tokens after "type x1 y1 x2 y2 flags".
 
 import type { PropValue } from "@cs/model";
-import type { FalstadElement } from "./text";
+import type { FalstadCircuit, FalstadElement } from "./text";
+import { CHIP_FALSTAD_PARTS, CHIP_LABEL_PREFIX } from "./mapping-chips";
 import { MORE_FALSTAD_PARTS } from "./mapping-more";
+import { farEndFan, inputFan } from "./mapping-variants";
+import { ANALOG2_LABELS } from "./mapping-analog2";
+import { ANALOGIC_LABELS } from "./mapping-analogic";
 
 export interface PartMapping {
   type: string;
@@ -33,6 +37,8 @@ export interface PartMapping {
   stretch?: boolean;
   /** Extra wires, in Falstad pixels, joining Falstad's post positions to ours where they differ. */
   wires?: [number, number][][];
+  /** Net labels to add, in Falstad pixels (a relay coil and its contacts share one). */
+  netLabels?: { name: string; at: [number, number] }[];
   /** A slider the element carries itself (VarRailElm), as doc slider bounds. */
   slider?: { prop: string; min: number; max: number };
   /** The part only approximates the Falstad element's behavior; the import report says so. */
@@ -62,6 +68,7 @@ export const LABEL_PREFIX: Record<string, string> = {
   "n-mosfet": "M",
   "p-mosfet": "M",
   "op-amp": "U",
+  subcircuit: "U",
   "zener-diode": "D",
   transformer: "T",
   vcvs: "E",
@@ -82,6 +89,9 @@ export const LABEL_PREFIX: Record<string, string> = {
   "d-flip-flop": "U",
   "jk-flip-flop": "U",
   "falstad:placeholder": "X",
+  ...ANALOG2_LABELS,
+  ...ANALOGIC_LABELS,
+  ...CHIP_LABEL_PREFIX,
 };
 
 export const PLACEHOLDER_TYPE = "falstad:placeholder";
@@ -104,7 +114,8 @@ const FLAG_CIRCLE_SYMBOL = 8;
 const RAD_TO_DEG = 180 / Math.PI;
 
 /** `unit` is the Falstad pixels per grid unit chosen for the circuit (16, or 8 for small-grid files). */
-export type Rule = (el: FalstadElement, unit: number) => PartMapping | null;
+/** `fc` is the whole circuit, for rules that read model lines (CustomLogicElm). */
+export type Rule = (el: FalstadElement, unit: number, fc?: FalstadCircuit) => PartMapping | null;
 
 export const FALSTAD_PARTS: Record<string, Rule> = {
   // GroundElm: [symbolType]
@@ -248,7 +259,8 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
 
   // TransistorElm: pnp lastvbe lastvbc beta modelName. Base is point1; collector
   // and emitter sit 16 px either side of point2 (FLAG_FLIP = 1 swaps the sides).
-  t: (el, unit) => unit !== 16 ? null : ({
+  // In an 8-pixel circuit ours are 8 px out, so the part is shortened and wires reach Falstad's posts.
+  t: (el, unit) => threeTerminal(el, unit, {
     type: num(el, 0, 1) === -1 ? "pnp-transistor" : "npn-transistor",
     props: { beta: num(el, 3, 100) },
     posts: 3, // stretches: collector and emitter follow point2
@@ -258,7 +270,7 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
 
   // MosfetElm: threshold beta (legacy text form; FLAG_PNP = 1, FLAG_FLIP = 8).
   // Gate is point1; drain and source sit 16 px either side of point2.
-  f: (el, unit) => unit !== 16 ? null : ({
+  f: (el, unit) => threeTerminal(el, unit, {
     type: el.flags & 1 ? "p-mosfet" : "n-mosfet",
     props: { threshold: num(el, 0, 1.5), beta: num(el, 1, 0.02) },
     posts: 3, // stretches: drain and source follow point2
@@ -268,20 +280,28 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
   // OpAmpElm: maxOut minOut gbw volts0 volts1 gain. Posts: "-" and "+" at
   // point1 ± opheight across the axis (FLAG_SWAP = 1 puts "+" first), output at point2.
   // Gain is read only with FLAG_GAIN = 8; otherwise 1000 with FLAG_LOWGAIN = 4, else 100000.
+  // Full-size inputs in an 8-pixel circuit get wires to ours, 8 px either side of the axis.
   a: (el, unit) => {
     const opheight = el.flags & 2 ? 8 : 16; // FLAG_SMALL
-    if (opheight !== unit) return null; // the inputs must land one grid unit either side of the axis
     const hs = opheight * dsign(el) * (el.flags & 1 ? -1 : 1);
     const dx = el.x2 - el.x1;
     const dy = el.y2 - el.y1;
     const dn = Math.hypot(dx, dy) || 1;
-    const minus: [number, number] = [el.x1 + (hs * dy) / dn, el.y1 - (hs * dx) / dn];
+    let minus: [number, number] = [el.x1 + (hs * dy) / dn, el.y1 - (hs * dx) / dn];
+    let length = dn;
+    let wires: [number, number][][] | undefined;
+    if (opheight === 2 * unit) {
+      const fan = inputFan(el, unit, [hs, -hs], 2);
+      if (!fan) return null;
+      ({ at: minus, length, wires } = fan);
+    } else if (opheight !== unit) return null; // the inputs must land one grid unit either side of the axis
     const gain = el.flags & 8 ? num(el, 5, 100000) : el.flags & 4 ? 1000 : 100000;
     return {
       type: "op-amp",
       props: { gain, maxOutput: num(el, 0, 15), minOutput: num(el, 1, -15) },
       posts: 3, // stretches: the output follows point2
-      place: { at: minus, toward: [minus[0] + dx, minus[1] + dy], flip: hs < 0 },
+      place: { at: minus, toward: [minus[0] + (dx / dn) * length, minus[1] + (dy / dn) * length], flip: hs < 0 },
+      wires,
       sliderProps: { 0: "maxOutput", 1: "minOutput", 2: "gain" },
     };
   },
@@ -323,9 +343,18 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
   },
 
   ...MORE_FALSTAD_PARTS,
+  ...CHIP_FALSTAD_PARTS,
 };
 
 const sign = (v: number): number => (v < 0 ? -1 : v === 0 ? 0 : 1);
+
+/** TransistorElm / MosfetElm: the two far posts sit 16 px either side of point2; ours one grid unit. */
+function threeTerminal(el: FalstadElement, unit: number, m: PartMapping & { place: NonNullable<PartMapping["place"]> }): PartMapping | null {
+  if (unit === 16) return m;
+  if (unit !== 8) return null;
+  const fan = farEndFan(el, unit, 2);
+  return fan && { ...m, place: { ...m.place, toward: fan.toward }, wires: fan.wires };
+}
 
 /** CircuitElm.setPoints(): the side that perpendicular offsets fall on follows the drawing direction. */
 function dsign(el: FalstadElement): number {

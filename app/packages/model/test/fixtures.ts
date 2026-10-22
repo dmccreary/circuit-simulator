@@ -8,6 +8,7 @@ const TRAITS: Record<string, PartTraits> = {
   vsource: { known: true, voltageSource: true },
   isource: { known: true, currentSource: true },
   ground: { known: true, netName: "GND" },
+  rail: { known: true },
   switch: { known: true, shorts: (p) => (p.closed ? [[0, 1]] : []) },
   ammeter: { known: true, ammeter: true },
   voltmeter: { known: true, voltmeter: true },
@@ -32,7 +33,7 @@ export const resolver: PartResolver = {
   traits: (type) => TRAITS[type] ?? { known: false },
   terminals(part: Part): Point[] {
     if (!TRAITS[part.type]) return [];
-    if (part.type === "ground") return [part.at];
+    if (part.type === "ground" || part.type === "rail") return [part.at];
     if (part.type === "subcircuit") {
       const n = Number(part.props.pins ?? 0);
       return Array.from({ length: n }, (_, i) => ({ x: part.at.x, y: part.at.y + i * 2 }));

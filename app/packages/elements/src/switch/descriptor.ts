@@ -12,7 +12,7 @@ export const switchDescriptor: ElementDescriptor = {
   stretchable: STRETCH,
   props: [
     { key: "closed", unit: "", kind: "boolean", default: false },
-    { key: "onResistance", unit: "ohm", range: [0, 1e6], default: 0 },
+    { key: "onResistance", unit: "ohm", range: [0, 1e6], default: 0, realisticDefault: 0.05 },
   ],
   readouts: [
     { key: "closed", unit: "" },

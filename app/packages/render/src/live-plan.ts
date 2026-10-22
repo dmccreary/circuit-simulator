@@ -33,6 +33,8 @@ export class LiveLayerPlan {
     compiled: CompiledCircuit | undefined,
     terminals: ReadonlyMap<string, Point[]>,
     getView: (type: string) => ElementView | undefined,
+    /** Live values by part and readout key (live-effects.ts); none when absent. */
+    readout?: (partId: string, key: string) => number | undefined,
   ): void {
     const nodeAt = (p: Point): number => compiled?.pointToNode.get(pointKey(p)) ?? -1;
     const segNode = new Map<string, number>();
@@ -56,7 +58,9 @@ export class LiveLayerPlan {
       const view = getView(part.type);
       if (view?.drawLive) {
         const terminalVoltages: number[] = new Array<number>(nodes.length).fill(0);
-        liveParts.push({ part, view, nodes, live: { get: () => undefined, terminalVoltages } });
+        const id = part.id;
+        const get = readout ? (key: string) => readout(id, key) : () => undefined;
+        liveParts.push({ part, view, nodes, live: { get, terminalVoltages } });
       }
     }
     this.wires = groups(wires);

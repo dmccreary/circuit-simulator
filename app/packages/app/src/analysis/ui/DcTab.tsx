@@ -57,7 +57,7 @@ export function DcTab() {
       {r?.ok && (
         <>
           <p className="an-balance">
-            {t({ key: "analysis.balance", values: { delivered: fmt(r.powerDelivered, "W"), absorbed: fmt(r.powerAbsorbed, "W") } })}
+            {t({ key: "analysis.balance", values: { delivered: fmt(r.powerDelivered, "W"), absorbed: fmt(r.powerAbsorbed, "W"), leakage: fmt(r.powerLeakage ?? 0, "W") } })}
           </p>
           <div className="an-tables">
             <table className="an-table">
