@@ -15,6 +15,8 @@ export const potentiometerDescriptor: ElementDescriptor = {
     { name: "B", at: { x: 4, y: 0 } },
     { name: "W", at: POT_WIPER },
   ],
+  // Imported at other Falstad lengths: B moves with the length, the wiper stays midway.
+  stretchable: { min: 2, default: 4, terminals: [1], midTerminals: [2] },
   props: [
     { key: "resistance", unit: "ohm", range: [1e-3, 1e12], default: 10000, standardSeries: true, showOnCanvas: true },
     { key: "position", unit: "", range: [0, 1], default: 0.5, sliderable: true },

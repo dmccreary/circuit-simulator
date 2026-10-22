@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -7,7 +7,7 @@ import { num, type Props } from "../shared/props";
  * current from terminal 0 to 1 is i = geq·v + ieq.
  *   BE:   geq = C/dt,  ieq = -geq·v[n-1]
  *   trap: geq = 2C/dt, ieq = -geq·v[n-1] - i[n-1]
- * Open circuit for DC. AC small-signal is not stamped yet (the Stamper is real-valued).
+ * Open circuit for DC; admittance jωC in small-signal analysis (stampAC).
  */
 class CapacitorModel extends TwoTerminalModel {
   override stateSize = 3; // v[n-1], i[n-1], i[n-2]
@@ -45,6 +45,10 @@ class CapacitorModel extends TwoTerminalModel {
     }
     s.conductance(this.a, this.b, this.geq);
     s.current(this.a, this.b, this.ieq);
+  }
+
+  stampAC(s: ComplexStamper, _op: SolutionView, omega: number): void {
+    s.admittance(this.a, this.b, 0, omega * this.c);
   }
 
   /** Current of the step being solved, from the companion model last stamped. */

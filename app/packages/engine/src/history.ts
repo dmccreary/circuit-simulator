@@ -1,6 +1,7 @@
 // Full-state history ring (simulation-engine.md §7.4, CHT-23): the display
-// state of each of the last N accepted steps, in single precision.
-// TODO: above the memory budget, switch to checkpoints + re-simulation (option C).
+// state of each of the last N accepted steps, in single precision. With
+// width 0 it keeps step times only; the engine then answers stateAt() by
+// re-simulating from checkpoints (option C, above the memory budget).
 
 export class HistoryRing {
   private data: Float32Array;
@@ -70,6 +71,12 @@ export class HistoryRing {
     if (i < 0) return null;
     const p = this.phys(i);
     return this.data.slice(p * this.width, (p + 1) * this.width);
+  }
+
+  /** Copy entry i (0 = oldest) into out, widening to double precision. */
+  entry(i: number, out: Float64Array): void {
+    const p = this.phys(i) * this.width;
+    for (let k = 0; k < this.width; k++) out[k] = this.data[p + k];
   }
 
   /** Drop every entry later than t. */

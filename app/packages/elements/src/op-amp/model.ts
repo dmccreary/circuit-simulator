@@ -1,5 +1,5 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
 import { closeEnough } from "../shared/linearize";
 import { exp } from "../shared/math";
 import { init } from "../shared/modelKit";
@@ -86,6 +86,17 @@ class OpAmpModel implements ElementModel {
     this.vdIter = vd;
     this.fIter = f;
     this.slopeIter = slope;
+  }
+
+  /** Small signal: V(out) - slope·(V+ - V-) - R·i = 0, slope from the operating point. */
+  stampAC(s: ComplexStamper, op: SolutionView): void {
+    const [minus, plus, out] = this.n;
+    this.scale = 1;
+    const [, slope] = this.transfer(this.vd(op));
+    s.voltageSource(this.branch, out, 0, 0, 0);
+    s.matrix(this.branch, plus, -slope, 0);
+    s.matrix(this.branch, minus, slope, 0);
+    if (this.rOut > 0) s.matrix(this.branch, this.branch, -this.rOut, 0);
   }
 
   /** Converged when the linearized output agrees with the true transfer at the new inputs. */

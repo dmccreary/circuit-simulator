@@ -27,6 +27,15 @@ export const DIGITAL_PINS: Readonly<Record<string, readonly DigitalPin[]>> = {
   "d-flip-flop": pins([0, 1, 4, 5], [2, 3]),
   // J, CLK, K, Q, Q̄
   "jk-flip-flop": pins([0, 1, 2], [3, 4]),
+  // Gates with more inputs ("and-gate-3"): inputs 0..n-1, output n.
+  ...Object.fromEntries(
+    [3, 4].flatMap((n) =>
+      ["and-gate", "or-gate", "nand-gate", "nor-gate"].map((g) => [
+        `${g}-${n}`,
+        pins(Array.from({ length: n }, (_, i) => i), [n]),
+      ]),
+    ),
+  ),
 };
 
 /** Digital terminal indexes of a part type, or undefined for analog parts. */

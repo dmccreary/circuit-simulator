@@ -1,8 +1,9 @@
 import type { CircuitDocument, CompiledCircuit, Part, Point, Probe, ProbeTarget } from "@cs/model";
 import { pointKey } from "@cs/model";
-import type { Box, ElementDescriptor, ElementView, LiveReadouts } from "@cs/elements";
+import type { Box, ElementDescriptor, ElementView } from "@cs/elements";
 import { ViewTransform } from "./transform";
-import { CanvasSymbolGraphics, affineFrom } from "./canvas-graphics";
+import { CanvasSymbolGraphics, RecordingGraphics, affineFrom, hasPath2D, type SymbolRecording } from "./canvas-graphics";
+import { LiveLayerPlan } from "./live-plan";
 import { HitIndex, hitTolerance, type HitResult, type HitTarget } from "./hit-index";
 import { CurrentAnimator, buildDotPaths } from "./animator";
 import { RenderScheduler, type Layer } from "./scheduler";
@@ -16,7 +17,16 @@ export interface ElementAccess {
   getDescriptor(type: string): ElementDescriptor | undefined;
   terminalPositions(part: Part, d: ElementDescriptor): Point[];
   localToDocument(part: Part, p: Point): Point;
+  /**
+   * Load the views of part types not yet available (lazy part groups,
+   * circuit-model.md §5.4). When given, the renderer requests missing views
+   * itself and redraws once they arrive; meanwhile those parts show a placeholder.
+   */
+  ensureTypes?(types: string[]): Promise<void>;
 }
+
+/** Recorded symbols kept at most (cleared when exceeded; rebuilt on demand). */
+const SYMBOL_CACHE_MAX = 4000;
 
 export type OverlayDrawer = (ctx: CanvasRenderingContext2D, view: ViewTransform, theme: Theme) => void;
 
@@ -61,12 +71,20 @@ export class SchematicRenderer {
   private display: Float64Array | undefined;
   private termCache = new Map<string, Point[]>();
   private vRange = new AutoRange();
+  /** Symbols recorded as Path2D, by type, style, label, length and props (rendering.md §2.2). */
+  private symbolCache = new Map<string, SymbolRecording>();
+  /** Wires and terminals grouped by node, rebuilt with the circuit, drawn every frame. */
+  private livePlan = new LiveLayerPlan();
+  /** View types already requested from access.ensureTypes. */
+  private requestedTypes = new Set<string>();
   private dpr = 1;
   private overlays = new Set<OverlayDrawer>();
   private unsubs: Array<() => void> = [];
   selection = new Set<string>();
   hover: HitTarget | undefined;
   coarsePointer = false;
+  /** Learner setting (SET-01); views that draw only one style ignore it. */
+  symbolStyle: "ansi" | "iec" | "lifelike" = "ansi";
 
   constructor(
     private host: HTMLElement,
@@ -116,6 +134,8 @@ export class SchematicRenderer {
       this.termCache.set(p.id, d ? this.access.terminalPositions(p, d) : []);
     }
     this.rebuildHits();
+    this.livePlan.build(doc, this.compiled, this.termCache, this.access.getView);
+    this.requestMissingViews(doc);
     if (this.compiled) {
       this.animator.setPaths(
         buildDotPaths(this.compiled, { parts: doc.parts, getView: this.access.getView, localToDocument: this.access.localToDocument }),
@@ -123,6 +143,26 @@ export class SchematicRenderer {
       this.animator.setDisplay(this.display);
     }
     this.scheduler.invalidate("symbols", "live", "dots", "overlay");
+  }
+
+  /** Ask for the views of lazily loaded part groups; redraw when they arrive. */
+  private requestMissingViews(doc: CircuitDocument): void {
+    if (!this.access.ensureTypes) return;
+    const missing: string[] = [];
+    for (const p of Object.values(doc.parts)) {
+      if (this.requestedTypes.has(p.type) || this.access.getView(p.type) || !this.access.getDescriptor(p.type)) continue;
+      this.requestedTypes.add(p.type);
+      missing.push(p.type);
+    }
+    if (missing.length === 0) return;
+    this.access.ensureTypes(missing).then(
+      () => {
+        if (this.doc) this.setCircuit(this.doc);
+      },
+      () => {
+        for (const t of missing) this.requestedTypes.delete(t); // retry on the next change
+      },
+    );
   }
 
   /** Latest display state from a frame (node voltages, terminal currents). */
@@ -297,11 +337,13 @@ export class SchematicRenderer {
     const doc = this.doc;
     if (!doc) return;
     const g = new CanvasSymbolGraphics(ctx, this.theme, this.dpr);
+    const cache = hasPath2D();
     for (const part of Object.values(doc.parts)) {
       const view = this.access.getView(part.type);
       g.setFrame(this.partMatrix(part));
       g.tint = this.selection.has(part.id) ? this.theme.tokens["symbol.selected"] : undefined;
-      if (view) view.drawSymbol(g, part, "ansi");
+      if (view && cache) g.drawRecording(this.symbolFor(view, part));
+      else if (view) view.drawSymbol(g, part, this.symbolStyle);
       else drawPlaceholder(g, part.type);
       g.tint = undefined;
       g.setFrame([this.view.scale, 0, 0, this.view.scale, 0, 0]);
@@ -345,51 +387,71 @@ export class SchematicRenderer {
     }
   }
 
-  private drawLive(ctx: CanvasRenderingContext2D): void {
-    const doc = this.doc;
-    if (!doc) return;
-    const v = this.view;
-    const range = this.vRange.range?.max ?? 1;
-    const color = (node: number | undefined) =>
-      node === undefined || !this.display ? this.theme.tokens.wire : voltageColor(this.theme, this.display[node] ?? 0, range);
-    ctx.lineCap = "round";
-    ctx.lineWidth = Math.max(1.5, 0.14 * v.scale);
-    const compiled = this.compiled;
-    const segNode = new Map<string, number>();
-    for (const s of compiled?.segments ?? []) segNode.set(`${s.wire}:${s.segment}`, s.node);
-    for (const w of Object.values(doc.wires)) {
-      for (let i = 0; i + 1 < w.points.length; i++) {
-        const node = segNode.get(`${w.id}:${i}`) ?? compiled?.pointToNode.get(pointKey(w.points[i]));
-        const a = v.toScreen(w.points[i]);
-        const b = v.toScreen(w.points[i + 1]);
-        ctx.strokeStyle = color(node);
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-      }
+  /** The part's symbol recorded as Path2D, from the cache when an identical part was drawn before. */
+  private symbolFor(view: ElementView, part: Part): SymbolRecording {
+    const key = `${part.type}|${this.symbolStyle}|${part.label}|${part.length ?? ""}|${JSON.stringify(part.props)}`;
+    let rec = this.symbolCache.get(key);
+    if (!rec) {
+      const r = new RecordingGraphics();
+      view.drawSymbol(r, part, this.symbolStyle);
+      rec = { ops: r.ops };
+      if (this.symbolCache.size >= SYMBOL_CACHE_MAX) this.symbolCache.clear();
+      this.symbolCache.set(key, rec);
     }
-    const g = new CanvasSymbolGraphics(ctx, this.theme, this.dpr);
-    for (const part of Object.values(doc.parts)) {
-      const terms = this.terminalsOf(part.id);
-      const nodes = terms.map((p) => compiled?.pointToNode.get(pointKey(p)));
-      const view = this.access.getView(part.type);
-      if (view?.drawLive && this.display) {
-        const live: LiveReadouts = {
-          get: () => undefined,
-          terminalVoltages: nodes.map((n) => (n === undefined ? 0 : (this.display?.[n] ?? 0))),
-        };
-        g.setFrame(this.partMatrix(part));
-        view.drawLive(g, part, live);
+    return rec;
+  }
+
+  /**
+   * Redrawn every frame while running (rendering.md §2.2). The per-circuit
+   * work (which node each wire and terminal is on) is done in setCircuit, and
+   * everything on one node is drawn as one path: one stroke for its wires,
+   * one fill for its terminal dots.
+   */
+  private drawLive(ctx: CanvasRenderingContext2D): void {
+    if (!this.doc) return;
+    const v = this.view;
+    const plan = this.livePlan;
+    const display = this.display;
+    const range = this.vRange.range?.max ?? 1;
+    const wireColor = this.theme.tokens.wire;
+    const color = (node: number) => (node < 0 || !display ? wireColor : voltageColor(this.theme, display[node] ?? 0, range));
+    const s = v.scale;
+    const ox = v.offsetX;
+    const oy = v.offsetY;
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(1.5, 0.14 * s);
+    for (const grp of plan.wires) {
+      const c = grp.coords;
+      ctx.strokeStyle = color(grp.node);
+      ctx.beginPath();
+      for (let i = 0; i < c.length; i += 4) {
+        ctx.moveTo(c[i] * s + ox, c[i + 1] * s + oy);
+        ctx.lineTo(c[i + 2] * s + ox, c[i + 3] * s + oy);
+      }
+      ctx.stroke();
+    }
+    if (display && plan.liveParts.length > 0) {
+      const g = new CanvasSymbolGraphics(ctx, this.theme, this.dpr);
+      for (const lp of plan.liveParts) {
+        const tv = lp.live.terminalVoltages as number[];
+        for (let i = 0; i < lp.nodes.length; i++) tv[i] = lp.nodes[i] < 0 ? 0 : (display[lp.nodes[i]] ?? 0);
+        g.setFrame(this.partMatrix(lp.part));
+        lp.view.drawLive!(g, lp.part, lp.live);
       }
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      terms.forEach((t, i) => {
-        const p = v.toScreen(t);
-        ctx.fillStyle = color(nodes[i]);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.max(2, 0.16 * v.scale), 0, Math.PI * 2);
-        ctx.fill();
-      });
+    }
+    const r = Math.max(2, 0.16 * s);
+    for (const grp of plan.terminals) {
+      const c = grp.coords;
+      ctx.fillStyle = color(grp.node);
+      ctx.beginPath();
+      for (let i = 0; i < c.length; i += 2) {
+        const x = c[i] * s + ox;
+        const y = c[i + 1] * s + oy;
+        ctx.moveTo(x + r, y);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+      }
+      ctx.fill();
     }
   }
 

@@ -1,0 +1,104 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dmccreary/circuit-simulator/main/app/packages/lesson/src/schema/lesson-v1.schema.json
+#
+# Ohm's law: measure the current through a resistor at three voltages.
+# Open it with ?lesson=ohms-law in the simulator.
+
+lesson: ohms-law
+title: Ohm's law
+time: 10 min
+objectives:
+  - Measure the current through a resistor with an ammeter
+  - Predict how the current changes when the voltage changes
+  - State Ohm's law, I = V / R
+concepts: [Ohm's Law, Electric Current, Voltage, Resistance, Ammeter]
+circuit: circuits/ohms-law.circuit.json
+
+permissions:
+  edit: values            # change values, but do not rewire
+  palette: []
+  tools: [select]
+  locked: [R1, A1]        # V1 stays editable
+  panels: [topbar, inspector, chart, status]
+
+steps:
+  - read: |
+      A DC source **V1** pushes current through a **1 kΩ** resistor **R1**.
+      The ammeter **A1** is in series with R1, so it reads the current through R1.
+
+      Ohm's law says the current is the voltage divided by the resistance:
+      `I = V / R`.
+    spotlight: [R1, A1]
+
+  - id: measure-5v
+    measure:
+      prompt: |
+        Press **Run**. V1 is set to **5 V**.
+        Read the current from the **I(R1)** probe flag (or click **A1** and
+        read it in the Inspector), then type it here, for example `4.2 mA`.
+      value: { part: A1, quantity: current }
+      unit: A
+      tolerance: 2%
+    spotlight: [A1, "command:sim.runPause"]
+    hints:
+      - The I(R1) flag next to R1 shows the current while the circuit runs.
+      - Units matter. 0.005 A and 5 mA are the same current.
+      - "I = V / R = 5 V / 1000 Ω."
+
+  - id: predict-10v
+    predict-number:
+      prompt: If you **double** V1 to 10 V, what current will A1 read?
+      unit: A
+      blind: [readouts, traces]
+    hints:
+      - R1 does not change. Only V changes in I = V / R.
+
+  - do:
+      prompt: Select **V1** and set its voltage to **10 V** in the Inspector.
+      check:
+        property: { part: V1, prop: voltage, equals: 10 V, tolerance: 1% }
+      success: V1 is now 10 V.
+    spotlight: [V1]
+    hints:
+      - Click the source V1, then type 10 into its Voltage field and press Enter.
+
+  - observe:
+      prompt: Press **Run** and compare your prediction with the ammeter.
+      run-for: 0.2 s
+      compare-with: predict-10v
+      show: { part: A1, quantity: current }
+      unit: A
+    spotlight: ["command:sim.runPause"]
+
+  - measure:
+      prompt: Type the current A1 reads at 10 V.
+      value: { part: A1, quantity: current }
+      unit: A
+      tolerance: 2%
+    spotlight: [A1]
+    hints:
+      - Twice the voltage across the same resistor gives twice the current.
+
+  - do:
+      prompt: Now set V1 to **2 V**.
+      check:
+        property: { part: V1, prop: voltage, equals: 2 V, tolerance: 1% }
+    spotlight: [V1]
+
+  - measure:
+      prompt: Run the circuit and type the current A1 reads at 2 V.
+      value: { part: A1, quantity: current }
+      unit: A
+      tolerance: 2%
+    hints:
+      - "I = 2 V / 1000 Ω. Write the answer in mA."
+
+  - explain:
+      prompt: Which statement matches your three measurements?
+      options:
+        - The current is proportional to the voltage.
+        - The current stays the same whatever the voltage.
+        - The current gets smaller as the voltage rises.
+
+summary: |
+  With R fixed at 1 kΩ you measured about 5 mA at 5 V, 10 mA at 10 V and
+  2 mA at 2 V: the current is proportional to the voltage, **I = V / R**.

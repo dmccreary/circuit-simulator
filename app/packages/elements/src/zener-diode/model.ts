@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
 import { Junction, VT } from "../shared/junction";
 import { closeEnough } from "../shared/linearize";
 import { log } from "../shared/math";
@@ -60,6 +60,10 @@ class ZenerModel extends TwoTerminalModel {
     const [i, g] = this.branch(v);
     s.conductance(this.a, this.b, g + step.gmin);
     s.current(this.a, this.b, i - g * v);
+  }
+
+  stampAC(s: ComplexStamper, op: SolutionView): void {
+    s.admittance(this.a, this.b, this.branch(this.voltage(op))[1] + this.gmin, 0);
   }
 
   hasConverged(x: SolutionView, _previous: SolutionView): boolean {

@@ -21,7 +21,7 @@
   var VERSION = 1;
   // data-* attribute -> URL parameter (spec section 19.1).
   var PARAMS = ["circuit", "example", "ctz", "c", "mode", "panels", "layout", "window", "speed", "current",
-    "realistic", "theme", "symbols", "lock", "id", "xapi", "lang", "height", "allow"];
+    "realistic", "theme", "symbols", "lock", "id", "xapi", "lang", "height", "allow", "lesson"];
 
   var scriptSrc = (document.currentScript && document.currentScript.src) || "";
   var embeds = {};
@@ -80,7 +80,7 @@
   Embed.prototype.getState = function () { return this.request("getState"); };
   Embed.prototype.configureXapi = function (config) { return this.request("configureXapi", config); };
 
-  /** Listen for "ready", "preferredHeight", "runStateChanged", "circuitChanged", "xapiStatement", or "*". */
+  /** Listen for "ready", "preferredHeight", "runStateChanged", "circuitChanged", "lessonProgress", "xapiStatement", or "*". */
   Embed.prototype.on = function (type, fn) {
     (this.listeners[type] = this.listeners[type] || []).push(fn);
     var self = this;

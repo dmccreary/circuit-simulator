@@ -9,6 +9,7 @@
 
 import type { PropValue } from "@cs/model";
 import type { FalstadElement } from "./text";
+import { MORE_FALSTAD_PARTS } from "./mapping-more";
 
 export interface PartMapping {
   type: string;
@@ -28,6 +29,14 @@ export interface PartMapping {
    * the local y axis (Falstad mirrors side posts with the drawing direction).
    */
   place?: { at: [number, number]; toward: [number, number]; flip: boolean };
+  /** Keep the two-point length on a one-terminal part whose lead stretches (rails, readouts). */
+  stretch?: boolean;
+  /** Extra wires, in Falstad pixels, joining Falstad's post positions to ours where they differ. */
+  wires?: [number, number][][];
+  /** A slider the element carries itself (VarRailElm), as doc slider bounds. */
+  slider?: { prop: string; min: number; max: number };
+  /** The part only approximates the Falstad element's behavior; the import report says so. */
+  approximate?: boolean;
 }
 
 export const LABEL_PREFIX: Record<string, string> = {
@@ -59,6 +68,19 @@ export const LABEL_PREFIX: Record<string, string> = {
   vccs: "G",
   ccvs: "H",
   cccs: "F",
+  rail: "V",
+  "voltage-readout": "",
+  "spdt-switch": "S",
+  "logic-input": "IN",
+  "logic-output": "OUT",
+  "not-gate": "U",
+  "and-gate": "U",
+  "or-gate": "U",
+  "nand-gate": "U",
+  "nor-gate": "U",
+  "xor-gate": "U",
+  "d-flip-flop": "U",
+  "jk-flip-flop": "U",
   "falstad:placeholder": "X",
 };
 
@@ -81,7 +103,8 @@ const FLAG_CIRCLE_SYMBOL = 8;
 
 const RAD_TO_DEG = 180 / Math.PI;
 
-type Rule = (el: FalstadElement) => PartMapping | null;
+/** `unit` is the Falstad pixels per grid unit chosen for the circuit (16, or 8 for small-grid files). */
+export type Rule = (el: FalstadElement, unit: number) => PartMapping | null;
 
 export const FALSTAD_PARTS: Record<string, Rule> = {
   // GroundElm: [symbolType]
@@ -137,7 +160,14 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
         sliderProps: { 0: "amplitude", 2: "offset" },
       };
     }
-    return null; // triangle, sawtooth, pulse, noise, variable
+    const waveform = ({ 3: "triangle", 4: "sawtooth", 5: "pulse", 6: "noise" } as Record<number, string>)[wf];
+    if (!waveform) return null;
+    return {
+      ...base,
+      type: "waveform-source",
+      props: { waveform, voltage: amplitude, offset, frequency, phase, dutyCycle: num(el, 5, 0.5) * 100 },
+      sliderProps: { 0: "voltage", 2: "offset" },
+    };
   },
 
   // CurrentElm: currentValue maxVoltage
@@ -153,14 +183,45 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
       : { type: "switch", props: { closed: position === 0 }, posts: 2 };
   },
 
-  // PotElm: maxResistance position sliderText...
-  "174": (el) => ({
-    type: "potentiometer",
-    props: { resistance: num(el, 0, 1000), position: num(el, 1, 0.5) },
-    posts: 3,
-    fixedLength: 4,
-    sliderProps: { 0: "resistance" },
-  }),
+  // PotElm: maxResistance position sliderText... setPoints() runs point2 along the longer axis
+  // (the other one with FLAG_FLIP = 2), rounded up to a multiple of two grid squares, and puts the
+  // wiper midway, offset across by the shorter component (one square, side by FLAG_FLIP_OFFSET = 4,
+  // when that is 0). Ours has the wiper two units out, so a wire reaches Falstad's wiper post.
+  "174": (el, unit) => {
+    const dx = el.x2 - el.x1;
+    const dy = el.y2 - el.y1;
+    const horizontal = Math.abs(dx) > Math.abs(dy) !== ((el.flags & 2) !== 0);
+    const span = 2 * unit;
+    const myLen = (d: number) => Math.sign(d) * span * Math.ceil(Math.abs(d) / span);
+    let p2: [number, number];
+    let offset: number;
+    if (horizontal) {
+      p2 = [el.x1 + myLen(dx), el.y1];
+      offset = dx < 0 ? dy : -dy;
+    } else {
+      p2 = [el.x1, el.y1 + myLen(dy)];
+      offset = dy > 0 ? dx : -dx;
+    }
+    if (offset === 0) offset = el.flags & 4 ? -unit : unit;
+    const len = Math.abs(p2[0] - el.x1) + Math.abs(p2[1] - el.y1);
+    if (len === 0) return null;
+    const ux = (p2[0] - el.x1) / len;
+    const uy = (p2[1] - el.y1) / len;
+    // interpPoint offsets g along (uy, -ux), which is local -y: the wiper is at local y = -offset.
+    const mid: [number, number] = [el.x1 + (ux * Math.floor(len / span) * span) / 2, el.y1 + (uy * Math.floor(len / span) * span) / 2];
+    const falstadWiper: [number, number] = [mid[0] + offset * uy, mid[1] - offset * ux];
+    const ours = 2 * unit * Math.sign(offset); // our wiper is 2 units out on the same side
+    const ourWiper: [number, number] = [mid[0] + ours * uy, mid[1] - ours * ux];
+    const wires = Math.abs(offset) === 2 * unit ? [] : [[ourWiper, falstadWiper]];
+    return {
+      type: "potentiometer",
+      props: { resistance: num(el, 0, 1000), position: num(el, 1, 0.5) },
+      posts: 3,
+      place: { at: [el.x1, el.y1], toward: p2, flip: offset < 0 },
+      wires,
+      sliderProps: { 0: "resistance" },
+    };
+  },
 
   // DiodeElm: [modelName] (flag 2) or [fwdrop] (flag 1)
   d: () => ({ type: "diode", props: {}, posts: 2 }),
@@ -187,30 +248,29 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
 
   // TransistorElm: pnp lastvbe lastvbc beta modelName. Base is point1; collector
   // and emitter sit 16 px either side of point2 (FLAG_FLIP = 1 swaps the sides).
-  t: (el) => ({
+  t: (el, unit) => unit !== 16 ? null : ({
     type: num(el, 0, 1) === -1 ? "pnp-transistor" : "npn-transistor",
     props: { beta: num(el, 3, 100) },
-    posts: 3,
-    fixedLength: 3, // BJT_LENGTH in @cs/elements
+    posts: 3, // stretches: collector and emitter follow point2
     place: { at: [el.x1, el.y1], toward: [el.x2, el.y2], flip: dsign(el) * (el.flags & 1 ? -1 : 1) < 0 },
     sliderProps: { 0: "beta" },
   }),
 
   // MosfetElm: threshold beta (legacy text form; FLAG_PNP = 1, FLAG_FLIP = 8).
   // Gate is point1; drain and source sit 16 px either side of point2.
-  f: (el) => ({
+  f: (el, unit) => unit !== 16 ? null : ({
     type: el.flags & 1 ? "p-mosfet" : "n-mosfet",
     props: { threshold: num(el, 0, 1.5), beta: num(el, 1, 0.02) },
-    posts: 3,
-    fixedLength: 3, // MOSFET_LENGTH in @cs/elements
+    posts: 3, // stretches: drain and source follow point2
     place: { at: [el.x1, el.y1], toward: [el.x2, el.y2], flip: dsign(el) * (el.flags & 8 ? -1 : 1) < 0 },
   }),
 
   // OpAmpElm: maxOut minOut gbw volts0 volts1 gain. Posts: "-" and "+" at
   // point1 ± opheight across the axis (FLAG_SWAP = 1 puts "+" first), output at point2.
   // Gain is read only with FLAG_GAIN = 8; otherwise 1000 with FLAG_LOWGAIN = 4, else 100000.
-  a: (el) => {
+  a: (el, unit) => {
     const opheight = el.flags & 2 ? 8 : 16; // FLAG_SMALL
+    if (opheight !== unit) return null; // the inputs must land one grid unit either side of the axis
     const hs = opheight * dsign(el) * (el.flags & 1 ? -1 : 1);
     const dx = el.x2 - el.x1;
     const dy = el.y2 - el.y1;
@@ -220,8 +280,7 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
     return {
       type: "op-amp",
       props: { gain, maxOutput: num(el, 0, 15), minOutput: num(el, 1, -15) },
-      posts: 3,
-      fixedLength: 9, // OPAMP_LENGTH in @cs/elements
+      posts: 3, // stretches: the output follows point2
       place: { at: minus, toward: [minus[0] + dx, minus[1] + dy], flip: hs < 0 },
       sliderProps: { 0: "maxOutput", 1: "minOutput", 2: "gain" },
     };
@@ -262,6 +321,8 @@ export const FALSTAD_PARTS: Record<string, Rule> = {
       sliderProps: { 0: "inductance", 2: "coupling" }, // item 1 is N1/N2, the inverse of ratio
     };
   },
+
+  ...MORE_FALSTAD_PARTS,
 };
 
 const sign = (v: number): number => (v < 0 ? -1 : v === 0 ? 0 : 1);

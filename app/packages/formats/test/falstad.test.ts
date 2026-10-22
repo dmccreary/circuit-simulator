@@ -85,14 +85,12 @@ describe("Falstad mapper", () => {
     expect(doc.meta.description).toBe("Resonant frequency of L1 and C1");
   });
 
-  it("imports cap.txt and keeps the unsupported double-throw switch as a placeholder", () => {
+  it("imports cap.txt with its double-throw switch", () => {
     const { doc, report } = importFalstad(CAP_TXT);
-    expect(report.unsupported).toHaveLength(1);
-    expect(report.unsupported[0]).toMatchObject({ code: "S", line: 3 });
-    const ph = doc.parts[report.unsupported[0].partId];
-    expect(ph.type).toBe(PLACEHOLDER_TYPE);
-    expect(ph.props.falstadLine).toBe("S 256 144 256 64 0 0 false 0 2");
-    expect(ph.props.terminals).toBe(2);
+    expect(report.unsupported).toEqual([]);
+    const [sw] = byType(doc, "spdt-switch");
+    expect(sw.props).toEqual({ thrown: false, momentary: false });
+    expect(sw.length).toBe(5);
     expect(byType(doc, "capacitor")[0].props.capacitance).toBeCloseTo(2e-4, 12);
     expect(Object.values(doc.sliders)[0].prop).toBe("capacitance");
     expect(doc.meta.description).toBe("Time constant of R1 and C1");
@@ -153,14 +151,16 @@ describe("Falstad mapper", () => {
     expect(Object.values(doc.parts).find((p) => p.type === "push-button")!.props.pressed).toBe(false);
     expect(Object.values(doc.parts).find((p) => p.type === "led")!.props).toEqual({ color: "green", fullBrightnessCurrent: 0.02 });
     expect(Object.values(doc.parts).find((p) => p.type === "lamp")!.props).toEqual({ ratedVoltage: 120, ratedPower: 100 });
-    expect(Object.values(doc.parts).find((p) => p.type === "potentiometer")!.length).toBeUndefined();
+    expect(Object.values(doc.parts).find((p) => p.type === "potentiometer")!.length).toBe(4); // stretchable: Falstad length
   });
 
-  it("imports ohms.txt (ground, rail placeholder)", () => {
+  it("imports ohms.txt (ground, variable rail with its slider)", () => {
     const { doc, report } = importFalstad(OHMS_TXT);
     expect(byType(doc, "ground")).toHaveLength(2);
-    expect(report.unsupported.map((u) => u.code)).toEqual(["172"]);
-    expect(doc.parts[report.unsupported[0].partId].props.terminals).toBe(1);
+    expect(report.unsupported).toEqual([]);
+    const [rail] = byType(doc, "rail");
+    expect(rail.props.waveform).toBe("dc");
+    expect(Object.values(doc.sliders).find((s) => s.part === rail.id)).toMatchObject({ prop: "voltage" });
   });
 
   it("produces a document that survives the native file round trip", () => {

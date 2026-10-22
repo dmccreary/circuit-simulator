@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
 import { Junction } from "../shared/junction";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
@@ -42,6 +42,11 @@ export class DiodeModel extends TwoTerminalModel {
     const gd = this.junction.conductance(v);
     s.conductance(this.a, this.b, gd + step.gmin);
     s.current(this.a, this.b, id - gd * v);
+  }
+
+  /** Small-signal conductance at the operating point. */
+  stampAC(s: ComplexStamper, op: SolutionView): void {
+    s.admittance(this.a, this.b, this.junction.conductance(this.voltage(op)) + this.gmin, 0);
   }
 
   hasConverged(x: SolutionView, _previous: SolutionView): boolean {

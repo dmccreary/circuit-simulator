@@ -1,13 +1,15 @@
 import type { ElementView } from "../../api";
+import { stretchOf } from "../../shared/stretch";
 import { line } from "../../shared/viewKit";
 import { clockWedge, describeLogic, drawBox, pinLabel } from "../symbols";
 
 export const jkFlipFlopView: ElementView = {
-  drawSymbol(g) {
+  drawSymbol(g, part) {
+    const e = stretchOf(part, 4);
     drawBox(g, 1, -1, 3, 5);
     for (const y of [0, 2, 4]) line(g, 0, y, 1, y);
-    line(g, 3, 0, 4, 0);
-    line(g, 3, 4, 4, 4);
+    line(g, 3, 0, 4 + e, 0);
+    line(g, 3, 4, 4 + e, 4);
     clockWedge(g, 1, 2);
     pinLabel(g, "J", 1.15, 0);
     pinLabel(g, "K", 1.15, 4);
@@ -15,6 +17,6 @@ export const jkFlipFlopView: ElementView = {
     pinLabel(g, "Q̄", 2.85, 4, "right");
   },
   currentPaths: () => [],
-  hitShape: () => ({ x: 0, y: -1, w: 4, h: 6 }),
+  hitShape: (part) => ({ x: 0, y: -1, w: Math.max(3, 4 + stretchOf(part, 4)), h: 6 }),
   describe: (part) => describeLogic(part),
 };

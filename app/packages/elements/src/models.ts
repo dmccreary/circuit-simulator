@@ -1,5 +1,10 @@
 // Worker-side registry. Must not import views.
+// Essentials are bundled; other groups load on demand: call ensureTypes()
+// before building an engine for a netlist (see descriptors.ts, "HOW TO
+// REGISTER A PART").
 import type { ModelFactory } from "./api";
+import type { LazyGroup } from "./groups";
+import { LazyRegistry } from "./lazy-registry";
 import { acSourceModel } from "./ac-source/model";
 import { ammeterModel } from "./ammeter/model";
 import { batteryModel } from "./battery/model";
@@ -16,16 +21,9 @@ import { resistorModel } from "./resistor/model";
 import { squareSourceModel } from "./square-source/model";
 import { switchModel } from "./switch/model";
 import { voltmeterModel } from "./voltmeter/model";
-import { npnModel, pnpModel } from "./bjt/model";
-import { nMosfetModel, pMosfetModel } from "./mosfet/model";
-import { opAmpModel } from "./op-amp/model";
-import { zenerDiodeModel } from "./zener-diode/model";
-import { cccsModel, ccvsModel, vccsModel, vcvsModel } from "./controlled-source/model";
-import { transformerModel } from "./transformer/model";
-import { LOGIC_MODELS } from "./logic/registry-models";
 
-// "ground" has no model: it only names its net.
-const FACTORIES: Record<string, ModelFactory> = {
+// Essentials. "ground" has no model: it only names its net.
+const ESSENTIAL_MODELS: Record<string, ModelFactory> = {
   resistor: resistorModel,
   capacitor: capacitorModel,
   inductor: inductorModel,
@@ -42,20 +40,33 @@ const FACTORIES: Record<string, ModelFactory> = {
   lamp: lampModel,
   ammeter: ammeterModel,
   voltmeter: voltmeterModel,
-  vcvs: vcvsModel,
-  vccs: vccsModel,
-  ccvs: ccvsModel,
-  cccs: cccsModel,
-  transformer: transformerModel,
-  "zener-diode": zenerDiodeModel,
-  "npn-transistor": npnModel,
-  "pnp-transistor": pnpModel,
-  "n-mosfet": nMosfetModel,
-  "p-mosfet": pMosfetModel,
-  "op-amp": opAmpModel,
-  ...LOGIC_MODELS,
 };
 
+/** One code chunk per lazy group. */
+const LOADERS: Record<LazyGroup, () => Promise<Record<string, ModelFactory>>> = {
+  advanced: () => import("./advanced/registry-models").then((m) => m.ADVANCED_MODELS),
+  logic: () => import("./logic/registry-models").then((m) => m.LOGIC_MODELS),
+  more: () => import("./more-parts/models").then((m) => m.MORE_MODELS),
+};
+
+const registry = new LazyRegistry(ESSENTIAL_MODELS, LOADERS);
+
+/** The model factory of a loaded part type (Essentials, or a group already ensured). */
 export function getModelFactory(type: string): ModelFactory | undefined {
-  return Object.prototype.hasOwnProperty.call(FACTORIES, type) ? FACTORIES[type] : undefined;
+  return registry.get(type);
+}
+
+/** Load the model groups these part types need; resolves at once when all are loaded. */
+export function ensureTypes(types: Iterable<string>): Promise<void> {
+  return registry.ensure(types);
+}
+
+/** True when getModelFactory() already covers these types. */
+export function typesLoaded(types: Iterable<string>): boolean {
+  return registry.missing(types).length === 0;
+}
+
+/** Load every group (headless tools and tests). */
+export function loadAllModels(): Promise<void> {
+  return registry.loadAll();
 }

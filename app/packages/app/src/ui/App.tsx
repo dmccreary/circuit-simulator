@@ -8,6 +8,10 @@ import { ChartPanel } from "./ChartPanel";
 import { Inspector } from "./Inspector";
 import { isTypingTarget } from "../commands/registry";
 import { FilesHost } from "../files/FilesHost";
+import { ShellLayer } from "../layout/ShellLayer";
+import { Splitter } from "../layout/Splitter";
+import { AnalysesHost } from "../analysis/ui/AnalysesHost";
+import { LessonSlot } from "../lesson/slot";
 import { EmbedContext, EmbedControls, usePanel, useShellClass } from "../embed/ui";
 import type { EmbedRuntime } from "../embed/runtime";
 import type { MessageRef } from "@cs/model";
@@ -15,6 +19,7 @@ import { t } from "../messages";
 
 function Shell({ c }: { c: AppController }) {
   const dark = useApp((s) => s.dark);
+  const theme = useApp((s) => s.theme) ?? (dark ? "dark" : "light");
   const error = useApp((s) => s.workerError);
   const diagnostics = useApp((s) => s.diagnostics);
   // Panels the capability set grants (embed `mode`/`panels`; app-shell.md §6).
@@ -51,15 +56,19 @@ function Shell({ c }: { c: AppController }) {
   }, [c]);
 
   return (
-    <div className={`shell ${shellClass}`.trim()} data-theme={dark ? "dark" : "light"}>
+    <div className={`shell ${shellClass}`.trim()} data-theme={theme}>
       <EmbedControls />
       {show.topbar && <TopBar />}
       <div className="main">
+        <LessonSlot />
         {show.palette && <Palette />}
+        {show.palette && <Splitter which="palette" />}
         <div className="center">
           <SchematicView />
+          {show.chart && <Splitter which="chart" />}
           {show.chart && <ChartPanel />}
         </div>
+        {show.inspector && <Splitter which="inspector" />}
         {show.inspector && <Inspector />}
       </div>
       {show.status && (
@@ -68,6 +77,8 @@ function Shell({ c }: { c: AppController }) {
         </footer>
       )}
       <FilesHost />
+      <ShellLayer />
+      <AnalysesHost />
     </div>
   );
 }

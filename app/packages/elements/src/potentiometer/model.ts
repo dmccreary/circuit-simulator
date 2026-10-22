@@ -1,5 +1,5 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
 import { exp } from "../shared/math";
 import { init } from "../shared/modelKit";
 import { num, R_MIN, str, type Props } from "../shared/props";
@@ -37,6 +37,11 @@ class PotentiometerModel implements ElementModel {
   stampStatic(s: Stamper): void {
     s.conductance(this.n[0], this.n[2], this.gA);
     s.conductance(this.n[2], this.n[1], this.gB);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    s.admittance(this.n[0], this.n[2], this.gA, 0);
+    s.admittance(this.n[2], this.n[1], this.gB, 0);
   }
 
   accept(_x: SolutionView, _step: StepInfo): void {}

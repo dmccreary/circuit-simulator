@@ -1,5 +1,6 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
+import { realPart } from "../shared/acStamp";
 import { closeEnough, limitStep, stampLinearized, type ControlPair } from "../shared/linearize";
 import { init } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
@@ -111,6 +112,16 @@ class MosfetModel implements ElementModel {
     const g = [[0, 0], [ev.dVgs, ev.dVds], [-ev.dVgs, -ev.dVds]];
     stampLinearized(s, this.n, this.ctrl, [p * vgs, p * vds], [0, p * ev.id, -p * ev.id], g);
     s.conductance(d, src, step.gmin);
+  }
+
+  /** Small-signal gm and gds at the operating point. */
+  stampAC(s: ComplexStamper, op: SolutionView): void {
+    const [vgs, vds] = this.voltages(op);
+    const ev = this.evaluate(vgs, vds);
+    const g = [[0, 0], [ev.dVgs, ev.dVds], [-ev.dVgs, -ev.dVds]];
+    const rs = realPart(s);
+    stampLinearized(rs, this.n, this.ctrl, [0, 0], [0, 0, 0], g, true);
+    rs.conductance(this.n[1], this.n[2], this.gmin);
   }
 
   hasConverged(x: SolutionView, _previous: SolutionView): boolean {

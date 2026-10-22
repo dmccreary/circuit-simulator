@@ -51,8 +51,15 @@ export interface ElementDescriptor {
   hotkey?: string;
   labelPrefix: string; // "R"
   terminals: TerminalSpec[];
-  /** Two-terminal parts whose second terminal sits at (length, 0). */
-  stretchable?: { min: number; default: number };
+  /**
+   * Parts drawn between two points. Without `terminals`: a two-terminal part whose
+   * second terminal sits at (length, 0). With `terminals`: the listed terminals
+   * shift along +x by (length - default) from their `at` (multi-terminal parts
+   * such as transistors and op-amps imported at Falstad sizes); an empty list
+   * stretches only the drawing (a one-terminal rail's lead). `midTerminals` shift
+   * by half that amount, rounded down (an analog switch's control pin).
+   */
+  stretchable?: { min: number; default: number; terminals?: number[]; midTerminals?: number[] };
   props: PropSpec[];
   readouts: ReadoutSpec[];
   /** Hints for the netlist compiler's structural checks. */
@@ -120,6 +127,24 @@ export interface SolutionView {
   v(node: NodeIndex): number;
 }
 
+/**
+ * Complex-valued MNA stamper for small-signal frequency analysis
+ * (history-and-analysis.md §5.3). Same indexing and sign conventions as
+ * Stamper; each value is given as real and imaginary parts.
+ */
+export interface ComplexStamper {
+  /** Add (re + j·im) to A[row][col]. Rows/cols equal to 0 (ground) are ignored. */
+  matrix(row: UnknownIndex, col: UnknownIndex, re: number, im: number): void;
+  /** Add (re + j·im) to b[row]. Row 0 is ignored. */
+  rhs(row: UnknownIndex, re: number, im: number): void;
+  /** Admittance y = re + j·im between nodes a and b (a capacitor is admittance(a, b, 0, ωC)). */
+  admittance(a: NodeIndex, b: NodeIndex, re: number, im: number): void;
+  /** Independent phasor current flowing out of node a, through the element, into node b. */
+  current(a: NodeIndex, b: NodeIndex, re: number, im: number): void;
+  /** Ideal voltage source with phasor value: V(plus) - V(minus) = re + j·im (branch sign as Stamper). */
+  voltageSource(branch: UnknownIndex, plus: NodeIndex, minus: NodeIndex, re: number, im: number): void;
+}
+
 export interface ReadoutSink {
   add(key: string, value: number): void;
 }
@@ -150,6 +175,16 @@ export interface ElementModel {
   stampStep?(s: Stamper, step: StepInfo): void;
   stampNewton?(s: Stamper, x: SolutionView, step: StepInfo): void;
   hasConverged?(x: SolutionView, previous: SolutionView): boolean;
+  /**
+   * Small-signal stamp at angular frequency omega (rad/s), linearized at the
+   * DC operating point `op` (accept() has already been called with it).
+   * Independent sources stamp their AC stimulus from the optional props
+   * `acMagnitude` (default 0) and `acPhase` (degrees, default 0), so a source
+   * with no AC magnitude is a short (voltage) or open (current). Optional:
+   * the analysis falls back to the real "ac"-kind stamps (matrix only) for
+   * models without it, which is exact for frequency-independent parts.
+   */
+  stampAC?(s: ComplexStamper, op: SolutionView, omega: number): void;
 
   /** A step was accepted; update internal state. */
   accept(x: SolutionView, step: StepInfo): void;

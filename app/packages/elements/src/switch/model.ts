@@ -1,5 +1,5 @@
 import type { NetlistElement } from "@cs/model";
-import type { ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, R_MIN, R_OPEN, type Props } from "../shared/props";
 import { isClosed } from "../shared/switchState";
@@ -26,6 +26,10 @@ export class SwitchModel extends TwoTerminalModel {
 
   stampStatic(s: Stamper): void {
     s.conductance(this.a, this.b, this.g);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    s.admittance(this.a, this.b, this.g, 0);
   }
 
   protected current(x: SolutionView): number {

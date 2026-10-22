@@ -1,5 +1,6 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import { realPart } from "../shared/acStamp";
 import { init } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -68,6 +69,11 @@ class ControlledSourceModel implements ElementModel {
         s.matrix(om, this.ctl, -k);
         break;
     }
+  }
+
+  /** Frequency-independent: the same linear stamp, in the real part. */
+  stampAC(s: ComplexStamper): void {
+    this.stampStatic(realPart(s));
   }
 
   accept(_x: SolutionView, _step: StepInfo): void {}

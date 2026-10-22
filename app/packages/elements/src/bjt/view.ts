@@ -1,6 +1,7 @@
 import type { Point } from "@cs/model";
 import type { ElementView, SymbolGraphics } from "../api";
 import { circle, describePart, line, polyline } from "../shared/viewKit";
+import { shiftPoint, shiftX, stretchOf } from "../shared/stretch";
 import { BJT_LENGTH } from "./descriptor";
 
 /** Filled arrowhead with its tip at `tip`, pointing away from `from`. */
@@ -29,9 +30,13 @@ function bjtView(pnp: boolean): ElementView {
   const L = BJT_LENGTH;
   const C: Point = { x: L, y: -s };
   const E: Point = { x: L, y: s };
+  // Imported at another Falstad size, the body stays at the collector/emitter
+  // column and the base lead stretches (CircuitJS1 TransistorElm).
   return {
-    drawSymbol(g) {
-      line(g, 0, 0, BAR_X, 0);
+    drawSymbol(g0, part) {
+      const e = stretchOf(part, L);
+      line(g0, 0, 0, BAR_X + e, 0);
+      const g = shiftX(g0, e);
       line(g, BAR_X, -0.6, BAR_X, 0.6);
       line(g, BAR_X, -s * LEG, C.x, C.y);
       line(g, BAR_X, s * LEG, E.x, E.y);
@@ -40,11 +45,15 @@ function bjtView(pnp: boolean): ElementView {
       else arrowHead(g, [BAR_X, s * LEG], mid);
       circle(g, BAR_X + 0.25, 0, 1.05);
     },
-    currentPaths: () => [
-      { points: [C, { x: BAR_X, y: -s * LEG }, { x: BAR_X, y: s * LEG }, E], from: 1, to: 2 },
-      { points: [{ x: 0, y: 0 }, { x: BAR_X, y: 0 }, { x: BAR_X, y: s * LEG }, E], from: 0, to: 2 },
-    ],
-    hitShape: () => ({ x: 0, y: -1.2, w: L + 0.4, h: 2.4 }),
+    currentPaths: (part) => {
+      const e = stretchOf(part, L);
+      const sh = (p: Point) => shiftPoint(p, e);
+      return [
+        { points: [C, { x: BAR_X, y: -s * LEG }, { x: BAR_X, y: s * LEG }, E].map(sh), from: 1, to: 2 },
+        { points: [{ x: 0, y: 0 }, ...[{ x: BAR_X, y: 0 }, { x: BAR_X, y: s * LEG }, E].map(sh)], from: 0, to: 2 },
+      ];
+    },
+    hitShape: (part) => ({ x: 0, y: -1.2, w: Math.max(1, L + stretchOf(part, L) + 0.4), h: 2.4 }),
     describe: (part, live) => describePart(part, { key: "beta", unit: "", fallback: 100 }, live),
   };
 }

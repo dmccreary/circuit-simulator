@@ -5,6 +5,7 @@ import { getDescriptor, type PropSpec } from "@cs/elements";
 import { formatValue, parseValue, UNIT_SYMBOL } from "@cs/units";
 import { useApp, useController, useDocument } from "./context";
 import { propLabel, t } from "../messages";
+import { SlidersPanel } from "../edit/SlidersPanel";
 
 function NumberField({ part, spec }: { part: Part; spec: PropSpec }) {
   const c = useController();
@@ -107,6 +108,7 @@ export function Inspector() {
           })}
         </form>
       )}
+      <SlidersPanel />
     </aside>
   );
 }

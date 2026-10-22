@@ -15,6 +15,9 @@ const terminals: TerminalSpec[] = [
  * with threshold 1.5 turns on when Vsg exceeds 1.5 V. Negative thresholds
  * give depletion-mode parts. Saturation current is beta/2·(Vgs - Vt)².
  */
+/** Imported at other Falstad sizes the drain and source move with the length (CircuitJS1 MosfetElm). */
+const STRETCH_MOSFET = { min: 2, default: MOSFET_LENGTH, terminals: [1, 2] };
+
 const props: PropSpec[] = [
   { key: "threshold", unit: "V", range: [-100, 100], default: 1.5, showOnCanvas: true },
   { key: "beta", unit: "", range: [1e-9, 100], default: 0.02 },
@@ -37,6 +40,7 @@ export const nMosfetDescriptor: ElementDescriptor = {
   aliases: ["nmos", "n-channel mosfet", "mosfet", "fet", "2n7000"],
   labelPrefix: "M",
   terminals,
+  stretchable: STRETCH_MOSFET,
   props,
   readouts,
 };
@@ -47,6 +51,7 @@ export const pMosfetDescriptor: ElementDescriptor = {
   aliases: ["pmos", "p-channel mosfet", "mosfet", "fet"],
   labelPrefix: "M",
   terminals,
+  stretchable: STRETCH_MOSFET,
   props,
   readouts,
 };

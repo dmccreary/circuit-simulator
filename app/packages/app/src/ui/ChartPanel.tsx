@@ -12,8 +12,11 @@ import { moveProbeToLane } from "../chart/lane-edits";
 import { ChartToolbar } from "../chart/ui/ChartToolbar";
 import { LaneControls } from "../chart/ui/LaneControls";
 import { CursorReadout } from "../chart/ui/CursorReadout";
-import { MeasurementsPanel } from "../chart/ui/MeasurementsPanel";
+import { lazyPanel } from "./lazy-panel";
 import "../chart/chart.css";
+
+// Shown on demand: its own chunk, loaded the first time it opens.
+const MeasurementsPanel = lazyPanel(() => import("../chart/ui/MeasurementsPanel").then((m) => m.MeasurementsPanel));
 
 const NEW_LANE = "__new__";
 
@@ -87,7 +90,7 @@ export function ChartPanel() {
     };
   }, [c]);
 
-  const theme = themeFor(useApp((s) => s.dark));
+  const theme = themeFor(useApp((s) => s.theme ?? s.dark));
   const list = Object.values(probes);
   return (
     <section className="chart-panel" aria-label={t("chart.title")}>

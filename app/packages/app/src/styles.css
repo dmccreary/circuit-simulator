@@ -10,6 +10,18 @@
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 14px;
 }
+/* Theme tokens: render/src/theme.ts is the source; the shell also receives them inline (themeCssVars). */
+.shell[data-theme="high-contrast"], .files-layer[data-theme="high-contrast"] {
+  --bg: #000000;
+  --panel: #000000;
+  --border: #ffffff;
+  --text: #ffffff;
+  --muted: #e0e0e0;
+  --accent: #ffff00;
+  --accent-text: #000000;
+  --danger: #ff6e6e;
+  --focus: #00ffff;
+}
 .shell[data-theme="dark"] {
   --bg: #0f1216;
   --panel: #161a20;
@@ -18,6 +30,7 @@
   --muted: #9aa4b2;
   --accent: #64b5f6;
   --accent-text: #0f1216;
+  --danger: #ef5350;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -36,9 +49,9 @@ kbd { font-size: 10px; opacity: 0.7; margin-left: 4px; }
 .sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
 .speed select, .field select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
 .main { flex: 1; display: flex; min-height: 0; }
-.palette, .inspector { width: 190px; overflow: auto; background: var(--panel); padding: 8px; }
+.palette, .inspector { width: var(--palette-w, 190px); flex: none; overflow: auto; background: var(--panel); padding: 8px; }
 .palette { border-right: 1px solid var(--border); }
-.inspector { width: 230px; border-left: 1px solid var(--border); }
+.inspector { width: var(--inspector-w, 230px); border-left: 1px solid var(--border); }
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 4px 0 8px; }
 h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 .palette ul { list-style: none; padding: 0; margin: 0; }
@@ -46,9 +59,9 @@ h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 .part-btn[data-hovered] { border-color: var(--border); }
 .part-btn.active { background: var(--accent); color: var(--accent-text); }
 .center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.schematic { flex: 3; position: relative; min-height: 120px; outline: none; touch-action: none; overflow: hidden; }
+.schematic { flex: 1 1 0; position: relative; min-height: 120px; outline: none; touch-action: none; overflow: hidden; }
 .schematic:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
-.chart-panel { flex: 2; display: flex; flex-direction: column; min-height: 120px; border-top: 1px solid var(--border); background: var(--panel); }
+.chart-panel { flex: 0 0 calc(var(--chart-frac, 0.4) * 100%); display: flex; flex-direction: column; min-height: 120px; border-top: 1px solid var(--border); background: var(--panel); }
 .legend { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 4px 10px; font-size: 12px; }
 .chip { display: flex; align-items: center; gap: 4px; }
 .chip output { font-variant-numeric: tabular-nums; }
@@ -66,6 +79,89 @@ h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 .part-title .type { color: var(--muted); font-size: 12px; }
 .status { padding: 3px 10px; font-size: 12px; color: var(--muted); background: var(--panel); border-top: 1px solid var(--border); }
 .status .error { color: var(--danger); }
-@media (max-width: 760px) {
-  .palette, .inspector { display: none; }
+
+/* ---- Responsive layout (spec §5; layout/LayoutManager.tsx sets the data attributes) ---- */
+.shell { overflow-x: hidden; }
+.shell[data-arrangement="side"] .center { flex-direction: row; }
+.shell[data-arrangement="side"] .schematic { min-width: 360px; }
+.shell[data-arrangement="side"] .chart-panel { min-width: 320px; border-top: none; border-left: 1px solid var(--border); }
+.shell[data-view="circuit"] .chart-panel, .shell[data-view="circuit"] .splitter-chart { display: none; }
+.shell[data-view="chart"] .schematic, .shell[data-view="chart"] .splitter-chart { display: none; }
+.shell[data-view="chart"] .chart-panel { flex: 1 1 auto; }
+
+.splitter { flex: none; background: var(--border); position: relative; z-index: 2; touch-action: none; outline: none; }
+.splitter[data-orientation="vertical"] { width: 4px; cursor: col-resize; }
+.splitter[data-orientation="horizontal"] { height: 4px; cursor: row-resize; }
+.splitter:hover, .splitter[data-dragging] { background: var(--accent); }
+.splitter:focus-visible { background: var(--accent); box-shadow: 0 0 0 2px var(--focus, var(--accent)); }
+.splitter::after { content: ""; position: absolute; inset: -4px; } /* larger grab area */
+.shell[data-pointer="coarse"] .splitter::after { inset: -12px; }
+
+/* Short viewports (RSP-08): one compact top-bar row. */
+.shell[data-height="short"] .topbar { flex-wrap: nowrap; overflow-x: auto; padding: 2px 6px; gap: 4px; }
+.shell[data-height="short"] .status { padding: 1px 8px; }
+
+/* Narrow (< 720 px): one main view, drawers for palette and inspector. */
+.narrow-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: space-between; padding: 4px 8px; background: var(--panel); border-top: 1px solid var(--border); }
+.narrow-views { display: flex; gap: 2px; }
+.shell[data-width="narrow"] .splitter-palette, .shell[data-width="narrow"] .splitter-inspector { display: none; }
+.shell[data-width="narrow"] .palette, .shell[data-width="narrow"] .inspector {
+  position: fixed; top: 0; bottom: 0; z-index: 60; width: min(85vw, 320px); visibility: hidden;
+  transition: transform 0.2s ease, visibility 0.2s; box-shadow: 0 0 24px rgba(0, 0, 0, 0.3);
 }
+.shell[data-width="narrow"] .palette { left: 0; transform: translateX(-100%); }
+.shell[data-width="narrow"] .inspector { right: 0; transform: translateX(100%); }
+.shell[data-drawer="palette"] .palette, .shell[data-drawer="inspector"] .inspector { transform: none; visibility: visible; }
+.drawer-scrim { position: fixed; inset: 0; z-index: 55; background: rgba(0, 0, 0, 0.35); }
+.shell[data-width="narrow"][data-view="both"] .chart-panel { flex-basis: max(35%, calc(var(--chart-frac, 0.4) * 100%)); }
+.shell[data-width="narrow"] .topbar .speed, .shell[data-width="narrow"] .topbar .tool kbd { display: none; }
+
+/* Coarse pointers: 44 px targets (RSP-13). */
+.shell[data-pointer="coarse"] .btn, .shell[data-pointer="coarse"] .part-btn, .shell[data-pointer="coarse"] select,
+.shell[data-pointer="coarse"] .field input, .shell[data-pointer="coarse"] .check { min-height: 44px; min-width: 44px; }
+.shell[data-pointer="coarse"] .slider-thumb { width: 28px; height: 28px; }
+@media (pointer: coarse) {
+  .files-menu-item { min-height: 44px; align-items: center; }
+}
+
+/* Reduced motion: no interface transitions either (ACC-13). */
+@media (prefers-reduced-motion: reduce) {
+  .shell *, .files-layer * { transition: none !important; animation: none !important; }
+}
+
+/* ---- Accessibility ---- */
+.sr-only, .sr-only-focusable:not(:focus-within) {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+/* The circuit tree becomes visible while a keyboard user is inside it. */
+.circuit-tree:focus-within { position: fixed; right: 12px; bottom: 40px; z-index: 70; width: min(480px, calc(100vw - 24px)); max-height: 50vh; overflow: auto; background: var(--panel); color: var(--text); border: 2px solid var(--focus, var(--accent)); border-radius: 8px; padding: 8px 12px; }
+.circuit-tree [role="row"] { padding: 4px 6px; border-radius: 4px; outline: none; }
+.circuit-tree [role="row"][data-focus-visible] { background: var(--accent); color: var(--accent-text); }
+.schematic:focus-visible { box-shadow: inset 0 0 0 2px var(--focus, var(--accent)); }
+.btn.small { padding: 2px 6px; font-size: 12px; }
+
+/* ---- Editing ---- */
+.inplace-editor { position: fixed; z-index: 65; width: 230px; padding: 10px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+.inplace-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.sliders { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 6px; }
+.sliders ul { list-style: none; padding: 0; margin: 0 0 6px; }
+.slider-row { display: flex; align-items: flex-end; gap: 6px; margin-bottom: 8px; }
+.prop-slider { flex: 1; display: grid; grid-template-columns: 1fr auto; font-size: 12px; color: var(--muted); }
+.slider-out { color: var(--text); font-variant-numeric: tabular-nums; }
+.slider-track { grid-column: 1 / -1; height: 24px; position: relative; }
+.slider-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 3px; transform: translateY(-50%); background: var(--border); border-radius: 2px; }
+.slider-thumb { top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); }
+.slider-thumb[data-focus-visible] { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
+
+/* ---- Settings and shortcut dialogs ---- */
+.shell-modal { max-width: 760px; }
+.shell-modal.sheet { max-width: none; align-self: flex-end; border-radius: 12px 12px 0 0; max-height: 90vh; }
+.settings-body, .shortcut-sheet { overflow: auto; min-height: 0; flex: 1; }
+.settings-body section, .shortcut-sheet section { margin-bottom: 12px; }
+.settings-body h3, .shortcut-sheet h3 { font-size: 13px; color: var(--text); margin: 8px 0 6px; }
+.shortcut-sheet table, .keymap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.shortcut-sheet th, .keymap th { text-align: left; font-weight: normal; padding: 3px 8px 3px 0; }
+.shortcut-sheet td, .keymap td { padding: 3px 0; white-space: nowrap; }
+.kbd { display: inline-block; font: 12px ui-monospace, monospace; padding: 1px 6px; margin-right: 4px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
+.keymap-actions { text-align: right; }
+.keymap-conflict, .settings-confirm { border: 1px solid var(--danger); border-radius: 6px; padding: 8px; margin: 6px 0; }

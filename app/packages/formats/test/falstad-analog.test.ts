@@ -46,7 +46,14 @@ describe("Falstad analog part placement", () => {
     expect(t.savedState).toEqual([0.01, 0.02, 0, 0]);
   });
 
-  test("an off-size transistor keeps our length and warns", () => {
-    expect(one("t 304 240 336 240 0 1 0 0 100").warnings).toContain("falstad.lengthChanged");
+  test.each([
+    ["short NPN", "t 304 240 336 240 0 1 0 0 100", [[304, 240], [336, 224], [336, 256]]],
+    ["long NPN", "t 304 240 384 240 0 1 0 0 100", [[304, 240], [384, 224], [384, 256]]],
+    ["long NMOS", "f 304 240 368 240 0 1.5 0.02", [[304, 240], [368, 224], [368, 256]]],
+    ["short op-amp", "a 192 192 288 192 0", [[192, 176], [192, 208], [288, 192]]],
+  ])("an off-size %s stretches to Falstad's posts without warnings", (_name, line, expected) => {
+    const { posts, warnings } = one(line);
+    expect(posts).toEqual(expected);
+    expect(warnings).toEqual([]);
   });
 });

@@ -1,20 +1,40 @@
-// The LinearSolver seam (simulation-engine.md §3). Dense LU now; a sparse
-// Markowitz solver for large circuits can replace it behind the same interface.
+// The LinearSolver seam (simulation-engine.md §3). Dense LU below for small
+// systems; SparseLU (sparse-lu.ts) with Markowitz ordering for large ones.
+// `createSolver` picks between them by size.
 
 export interface SparsityPattern {
   size: number;
   /** Optional row-major nonzero flags (size * size); dense solvers ignore it. */
   nonzeros?: Uint8Array;
+  /**
+   * Coordinate layout for "coordinate" solvers: slot k is (rows[k], cols[k]),
+   * 0-based, and factor() receives values in slot order. Slots are unique.
+   */
+  rows?: Int32Array;
+  cols?: Int32Array;
+  /** Slots in use (rows/cols may be longer). Default rows.length. */
+  nnz?: number;
 }
 
 export interface LinearSolver {
-  /** Called when the topology changes: decide the pivot order and fill-in. */
+  /**
+   * How factor() expects its values: "dense" (default) is row-major
+   * size * size; "coordinate" follows the slot order of the analyzed pattern.
+   */
+  readonly format?: "dense" | "coordinate";
+  /** Called when the topology changes (or, for coordinate solvers, when slots are added). */
   analyze(pattern: SparsityPattern): void;
-  /** Factor row-major values (size * size). Throws SingularError with the failing row. */
+  /** Factor the values. Throws SingularError with the failing row. */
   factor(values: Float64Array): void;
   /** Solve in place using the latest factorization. */
   solve(rhs: Float64Array): void;
+  /** Value-dependent solver state (a pivot order) to keep in engine checkpoints, for exact replay. */
+  snapshot?(): unknown;
+  restore?(state: unknown): void;
 }
+
+/** Below this many unknowns dense LU is faster than sparse (simulation-engine.md §3). */
+export const SPARSE_MIN_SIZE = 40;
 
 /** `row` is the 0-based matrix row/column (unknown index - 1) that had no usable pivot. */
 export class SingularError extends Error {

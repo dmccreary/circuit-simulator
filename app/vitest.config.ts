@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
-const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app", "xapi", "persistence"];
+const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app", "xapi", "persistence", "lesson"];
 
 export default defineConfig({
   resolve: {
@@ -15,5 +15,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["packages/*/test/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
+    // Lazy part groups load before any test (packages/elements/src/descriptors.ts).
+    setupFiles: ["./tests/setup/load-all-parts.ts"],
   },
 });

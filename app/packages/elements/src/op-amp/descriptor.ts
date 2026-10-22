@@ -18,6 +18,8 @@ export const opAmpDescriptor: ElementDescriptor = {
     { name: "+", at: { x: 0, y: 2 } },
     { name: "out", at: { x: OPAMP_LENGTH, y: 1 } },
   ],
+  // Imported at other Falstad sizes the output moves with the length (CircuitJS1 OpAmpElm).
+  stretchable: { min: 2, default: OPAMP_LENGTH, terminals: [2] },
   props: [
     { key: "gain", unit: "", range: [1, 1e9], default: 100000 },
     { key: "maxOutput", unit: "V", range: [-1e5, 1e5], default: 15 },

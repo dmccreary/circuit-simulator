@@ -3,6 +3,7 @@
 
 import type { CircuitDocument, MessageRef } from "@cs/model";
 import { FormatError, importFalstad, parseCircuit, type FalstadImportReport } from "@cs/formats";
+import { baseName } from "./base-name";
 
 export interface ReadResult {
   doc: CircuitDocument;
@@ -12,8 +13,8 @@ export interface ReadResult {
   report?: FalstadImportReport;
 }
 
-/** File name without the circuit extensions: "rc.circuit.json" -> "rc". */
-export const baseName = (name: string): string => name.replace(/\.(circuit\.json|json|txt)$/i, "");
+/** File name without the circuit extensions (re-exported; lives in base-name.ts so the shell need not load this module). */
+export { baseName };
 
 export function readCircuitText(text: string, opts: { name?: string; isKnownType?: (t: string) => boolean } = {}): ReadResult {
   const trimmed = text.replace(/^\uFEFF/, "").trimStart();
@@ -23,8 +24,7 @@ export function readCircuitText(text: string, opts: { name?: string; isKnownType
     if (!doc.meta.title && opts.name) doc.meta.title = baseName(opts.name);
     return { doc, format: "native", notices };
   }
-  // Falstad's newer XML format (FIL-14) has no reader in @cs/formats yet.
-  if (trimmed.startsWith("<cir")) throw new FormatError({ key: "falstad.xmlUnsupported" });
+  // Falstad's text and XML (<cir ...>) formats both go through importFalstad (FIL-14).
   const { doc, report } = importFalstad(trimmed);
   if (!doc.meta.title && opts.name) doc.meta.title = baseName(opts.name);
   const notices: MessageRef[] = [];

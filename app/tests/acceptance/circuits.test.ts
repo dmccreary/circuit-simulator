@@ -83,6 +83,26 @@ describe("acceptance circuits (real element models)", () => {
     expect(v).toBeLessThan(2.3);
   });
 
+  test("a second circuit with no ground connection still solves exactly", () => {
+    const e = createEngine(
+      netlist(4, [
+        ["V1", "battery", [1, 0], { voltage: 5 }],
+        ["R1", "resistor", [1, 0], { resistance: 1000 }],
+        // Isolated loop: nodes 2-4 have no path to ground.
+        ["V2", "battery", [2, 3], { voltage: 9 }],
+        ["R2", "resistor", [2, 4], { resistance: 1000 }],
+        ["R3", "resistor", [4, 3], { resistance: 2000 }],
+      ]),
+      getModelFactory,
+    );
+    expect(e.status).toBe("ok");
+    expect(e.diagnostics.map((d) => d.id)).toEqual(["floating-tied"]);
+    const d = e.displayState();
+    expect(d[1]).toBeCloseTo(5, 12);
+    expect(d[2] - d[4]).toBeCloseTo(3, 9); // 9 V across 1k + 2k: 3 V on R2
+    expect(d[4] - d[3]).toBeCloseTo(6, 9);
+  });
+
   test.each([
     ["cap.txt", CAP_TXT],
     ["lrc.txt", LRC_TXT],

@@ -1,5 +1,6 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper } from "../api";
+import { realPart } from "../shared/acStamp";
 import { Junction } from "../shared/junction";
 import { closeEnough, stampLinearized, type ControlPair } from "../shared/linearize";
 import { init } from "../shared/modelKit";
@@ -119,6 +120,13 @@ class BjtModel implements ElementModel {
     const ev = this.evaluate(vbe, vbc, step.gmin);
     const p = this.p;
     stampLinearized(s, this.n, this.ctrl, [p * vbe, p * vbc], ev.i.map((i) => p * i), ev.g);
+  }
+
+  /** Small-signal conductances (gπ, gm, gμ, ...) at the operating point. */
+  stampAC(s: ComplexStamper, op: SolutionView): void {
+    const [vbe, vbc] = this.junctions(op);
+    const ev = this.evaluate(vbe, vbc, this.gmin);
+    stampLinearized(realPart(s), this.n, this.ctrl, [0, 0], [0, 0, 0], ev.g, true);
   }
 
   hasConverged(x: SolutionView, _previous: SolutionView): boolean {

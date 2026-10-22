@@ -1,5 +1,10 @@
 // Main-thread registry. Must not import models.
+// Essentials are bundled; other groups load on demand: ensureTypes() before
+// drawing a circuit, or let the renderer request missing views itself (see
+// descriptors.ts, "HOW TO REGISTER A PART").
 import type { ElementView } from "./api";
+import type { LazyGroup } from "./groups";
+import { LazyRegistry } from "./lazy-registry";
 import { acSourceView } from "./ac-source/view";
 import { ammeterView } from "./ammeter/view";
 import { batteryView } from "./battery/view";
@@ -17,15 +22,8 @@ import { resistorView } from "./resistor/view";
 import { squareSourceView } from "./square-source/view";
 import { switchView } from "./switch/view";
 import { voltmeterView } from "./voltmeter/view";
-import { npnView, pnpView } from "./bjt/view";
-import { nMosfetView, pMosfetView } from "./mosfet/view";
-import { opAmpView } from "./op-amp/view";
-import { zenerDiodeView } from "./zener-diode/view";
-import { cccsView, ccvsView, vccsView, vcvsView } from "./controlled-source/view";
-import { transformerView } from "./transformer/view";
-import { LOGIC_VIEWS } from "./logic/registry-views";
 
-const VIEWS: Record<string, ElementView> = {
+const ESSENTIAL_VIEWS: Record<string, ElementView> = {
   ground: groundView,
   resistor: resistorView,
   capacitor: capacitorView,
@@ -43,20 +41,38 @@ const VIEWS: Record<string, ElementView> = {
   lamp: lampView,
   ammeter: ammeterView,
   voltmeter: voltmeterView,
-  vcvs: vcvsView,
-  vccs: vccsView,
-  ccvs: ccvsView,
-  cccs: cccsView,
-  transformer: transformerView,
-  "zener-diode": zenerDiodeView,
-  "npn-transistor": npnView,
-  "pnp-transistor": pnpView,
-  "n-mosfet": nMosfetView,
-  "p-mosfet": pMosfetView,
-  "op-amp": opAmpView,
-  ...LOGIC_VIEWS,
 };
 
+/** One code chunk per lazy group. */
+const LOADERS: Record<LazyGroup, () => Promise<Record<string, ElementView>>> = {
+  advanced: () => import("./advanced/registry-views").then((m) => m.ADVANCED_VIEWS),
+  logic: () => import("./logic/registry-views").then((m) => m.LOGIC_VIEWS),
+  more: () => import("./more-parts/views").then((m) => m.MORE_VIEWS),
+};
+
+const registry = new LazyRegistry(ESSENTIAL_VIEWS, LOADERS);
+
+/** The view of a loaded part type (Essentials, or a group already ensured). */
 export function getView(type: string): ElementView | undefined {
-  return Object.prototype.hasOwnProperty.call(VIEWS, type) ? VIEWS[type] : undefined;
+  return registry.get(type);
+}
+
+/** Load the view groups these part types need; resolves at once when all are loaded. */
+export function ensureTypes(types: Iterable<string>): Promise<void> {
+  return registry.ensure(types);
+}
+
+/** True when getView() already covers these types. */
+export function typesLoaded(types: Iterable<string>): boolean {
+  return registry.missing(types).length === 0;
+}
+
+/** Load every view group (the palette prefetches them while idle; tests preload). */
+export function loadAllViews(): Promise<void> {
+  return registry.loadAll();
+}
+
+/** Called with the newly available types whenever a view group finishes loading. */
+export function onViewsLoaded(fn: (types: string[]) => void): () => void {
+  return registry.onLoaded(fn);
 }

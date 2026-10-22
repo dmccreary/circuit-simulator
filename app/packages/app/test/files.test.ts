@@ -109,7 +109,8 @@ describe("file round trip through the controller", () => {
     c.run();
     // The unsaved-work guard asks first (FIL-04); declining keeps the work.
     const declined = s.openText(text, "rc.circuit.json");
-    await Promise.resolve();
+    // The file readers load on demand (a separate chunk), so the guard appears asynchronously.
+    await vi.waitFor(() => expect(s.ui.get().dialog?.kind).toBe("confirm"));
     const d = s.ui.get().dialog;
     expect(d?.kind).toBe("confirm");
     if (d?.kind === "confirm") d.resolve(false);
@@ -117,7 +118,7 @@ describe("file round trip through the controller", () => {
     expect(c.edits.doc.parts.R1.props.resistance).toBe(47);
 
     const accepted = s.openText(text, "rc.circuit.json");
-    await Promise.resolve();
+    await vi.waitFor(() => expect(s.ui.get().dialog?.kind).toBe("confirm"));
     const d2 = s.ui.get().dialog;
     if (d2?.kind === "confirm") d2.resolve(true);
     expect(await accepted).toBe(true);
@@ -153,19 +154,12 @@ describe("file round trip through the controller", () => {
     expect(s.ui.get().notice?.error).toBe(true);
   });
 
-  test("every library file reads, or reports the XML format clearly (acceptance test 20)", () => {
+  test("every library file reads, text and XML alike (acceptance test 20)", () => {
     // Vite inlines the fetched library (app/public/circuits/, see scripts/fetch-examples.mjs); empty when not fetched.
     const files: Record<string, string> = import.meta.glob("../../../public/circuits/*.txt", { query: "?raw", import: "default", eager: true });
     const failures: string[] = [];
-    let xml = 0;
     for (const [path, text] of Object.entries(files)) {
       const file = path.split("/").pop()!;
-      // Falstad's newer XML format has no reader in @cs/formats yet.
-      if (text.trimStart().startsWith("<cir")) {
-        xml++;
-        expect(() => readCircuitText(text)).toThrow("falstad.xmlUnsupported");
-        continue;
-      }
       try {
         readCircuitText(text, { name: file });
       } catch (e) {
@@ -173,7 +167,6 @@ describe("file round trip through the controller", () => {
       }
     }
     expect(failures).toEqual([]);
-    expect(xml).toBeLessThanOrEqual(Object.keys(files).length / 4);
   });
 });
 

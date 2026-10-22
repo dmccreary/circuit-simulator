@@ -177,7 +177,7 @@ describe("CurrentAnimator", () => {
     a.advanceSimulated(0.001, 0.001); // 1 real second at speed 1e-3 -> += 2
     const offsets: number[] = [];
     // Phase is 3.0: dots sit on whole grid units.
-    const ctx = { beginPath() {}, arc(x: number) { offsets.push(x); }, fill() {}, set fillStyle(_: string) {}, set strokeStyle(_: string) {} };
+    const ctx = { beginPath() {}, moveTo() {}, arc(x: number) { offsets.push(x); }, fill() {}, set fillStyle(_: string) {}, set strokeStyle(_: string) {} };
     const v = new ViewTransform();
     a.draw(ctx as unknown as CanvasRenderingContext2D, v, lightTheme);
     expect(offsets.map((x) => x / 16)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
@@ -242,6 +242,16 @@ describe("RenderScheduler", () => {
     expect(q).toHaveLength(1);
     step(16);
     expect(drawn).toEqual(["grid", "overlay", "overlay"]);
+  });
+
+  test("a drawer that invalidates every frame keeps exactly one frame pending", () => {
+    const { clock, q, step } = fakeClock();
+    const s = new RenderScheduler(clock);
+    s.onDraw("overlay", () => s.invalidate("overlay")); // a pulsing highlight
+    for (let i = 0; i < 20; i++) {
+      expect(q).toHaveLength(1);
+      step(i * 16);
+    }
   });
 
   test("tickers keep it running and receive real dt", () => {

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/dmccreary/circuit-simulator/main/app/packages/lesson/src/schema/lesson-v1.schema.json",
+  "title": "Circuit Simulator lesson (version 1)",
+  "description": "A guided lesson: metadata, a starting circuit, permissions and an ordered list of steps. A lesson cannot run code; every field comes from the vocabulary below (spec Section 20).",
+  "type": "object",
+  "required": ["lesson", "title", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "lesson": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Kebab-case lesson id, used for progress and xAPI." },
+    "title": { "type": "string" },
+    "time": { "type": "string", "description": "Estimated time, such as \"10 min\"." },
+    "objectives": { "$ref": "#/$defs/stringList" },
+    "concepts": { "$ref": "#/$defs/stringList", "description": "Concept names from the book's learning graph." },
+    "summary": { "type": "string", "description": "Shown on the completion summary." },
+    "circuit": {
+      "description": "A circuit file address relative to the lesson file, { example: name } from the example library, or an inline native circuit.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object", "required": ["example"], "properties": { "example": { "type": "string" } }, "additionalProperties": false },
+        { "type": "object", "required": ["format"], "properties": { "format": { "const": "circuit-simulator" } } },
+        { "type": "object", "required": ["inline"], "properties": { "inline": { "type": "object" } }, "additionalProperties": false }
+      ]
+    },
+    "permissions": { "$ref": "#/$defs/permissions" },
+    "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } }
+  },
+  "$defs": {
+    "stringList": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
+    "amount": { "type": ["number", "string"], "description": "A number, optionally with units: 2.5, \"2.5 V\", \"10k\", \"100 µF\"." },
+    "tolerance": { "type": ["number", "string"], "description": "Absolute (\"0.05 V\") or relative (\"2%\")." },
+    "quantity": { "enum": ["voltage", "current", "power"] },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "edit": { "enum": ["full", "values", "none"] },
+        "palette": { "oneOf": [{ "const": "all" }, { "type": "array", "items": { "type": "string" } }], "description": "Part types offered in the palette." },
+        "tools": { "type": "array", "items": { "enum": ["select", "wire", "probe-v", "place"] } },
+        "locked": { "oneOf": [{ "const": "all" }, { "type": "array", "items": { "type": "string" } }], "description": "Part labels the learner cannot change." },
+        "panels": { "type": "array", "items": { "enum": ["palette", "chart", "inspector", "status", "topbar"] } }
+      }
+    },
+    "valueRef": {
+      "oneOf": [
+        { "type": "object", "required": ["part"], "additionalProperties": false, "properties": { "part": { "type": "string" }, "quantity": { "$ref": "#/$defs/quantity" } } },
+        { "type": "object", "required": ["probe"], "additionalProperties": false, "properties": { "probe": { "type": "string" } } }
+      ]
+    },
+    "compare": {
+      "properties": {
+        "equals": { "$ref": "#/$defs/amount" },
+        "tolerance": { "$ref": "#/$defs/tolerance" },
+        "above": { "$ref": "#/$defs/amount" },
+        "below": { "$ref": "#/$defs/amount" },
+        "within": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/amount" } }
+      }
+    },
+    "check": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "all": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/check" } },
+        "any": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/check" } },
+        "not": { "$ref": "#/$defs/check" },
+        "part": { "type": "object", "additionalProperties": false, "properties": { "type": { "type": "string" }, "label": { "type": "string" }, "exists": { "type": "boolean" } } },
+        "property": {
+          "allOf": [{ "$ref": "#/$defs/compare" }],
+          "type": "object",
+          "required": ["part", "prop"],
+          "properties": { "part": { "type": "string" }, "prop": { "type": "string" } }
+        },
+        "switch": { "type": "object", "required": ["part", "closed"], "additionalProperties": false, "properties": { "part": { "type": "string" }, "closed": { "type": "boolean" } } },
+        "connected": {
+          "type": "object",
+          "required": ["a", "b"],
+          "additionalProperties": false,
+          "properties": { "a": { "type": "string", "description": "\"R1.2\" (1-based terminal) or a node name such as GND." }, "b": { "type": "string" }, "connected": { "type": "boolean" } }
+        },
+        "probe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "quantity": { "enum": ["voltage", "current", "power", "logic"] }, "part": { "type": "string" }, "exists": { "type": "boolean" } }
+        },
+        "value": { "allOf": [{ "$ref": "#/$defs/compare" }], "type": "object", "required": ["of"], "properties": { "of": { "$ref": "#/$defs/valueRef" } } },
+        "measurement": {
+          "allOf": [{ "$ref": "#/$defs/compare" }],
+          "type": "object",
+          "required": ["probe", "kind"],
+          "properties": {
+            "probe": { "type": "string" },
+            "kind": { "enum": ["mean", "rms", "peakToPeak", "min", "max", "frequency", "period", "dutyCycle", "riseTime", "fallTime"] },
+            "over": { "$ref": "#/$defs/amount" }
+          }
+        },
+        "diagnostic": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object", "required": ["id"], "additionalProperties": false, "properties": { "id": { "type": "string" }, "present": { "type": "boolean" } } }
+          ]
+        },
+        "sim-time": { "$ref": "#/$defs/amount" },
+        "run-state": { "enum": ["running", "paused"] }
+      },
+      "additionalProperties": false
+    },
+    "feedback": {
+      "type": "object",
+      "required": ["say"],
+      "additionalProperties": false,
+      "properties": { "say": { "type": "string" }, "diagnostic": { "type": "string" }, "when": { "$ref": "#/$defs/check" } }
+    },
+    "blind": { "type": "array", "items": { "enum": ["readouts", "traces", "animation"] } },
+    "prompted": { "type": "object", "properties": { "prompt": { "type": "string" }, "text": { "type": "string" } } },
+    "step": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "spotlight": { "$ref": "#/$defs/stringList", "description": "Part labels, command:<id>, or palette:<type>." },
+        "hints": { "type": "array", "maxItems": 3, "items": { "type": "string" } },
+        "feedback": { "type": "array", "items": { "$ref": "#/$defs/feedback" } },
+        "permissions": { "$ref": "#/$defs/permissions" },
+        "success": { "type": "string" },
+        "read": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/prompted" }] },
+        "predict-number": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "properties": { "unit": { "type": "string" }, "blind": { "$ref": "#/$defs/blind" }, "lock-run": { "type": "boolean" } }
+        },
+        "predict-choice": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "required": ["options"],
+          "properties": {
+            "options": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+            "answer": { "type": ["string", "integer"] },
+            "blind": { "$ref": "#/$defs/blind" },
+            "lock-run": { "type": "boolean" }
+          }
+        },
+        "do": { "allOf": [{ "$ref": "#/$defs/prompted" }], "required": ["check"], "properties": { "check": { "$ref": "#/$defs/check" }, "success": { "type": "string" } } },
+        "observe": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "required": ["run-for"],
+          "properties": {
+            "run-for": { "$ref": "#/$defs/amount" },
+            "compare-with": { "type": ["string", "integer"] },
+            "show": { "$ref": "#/$defs/valueRef" },
+            "unit": { "type": "string" }
+          }
+        },
+        "measure": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "required": ["value"],
+          "properties": { "value": { "$ref": "#/$defs/valueRef" }, "unit": { "type": "string" }, "tolerance": { "$ref": "#/$defs/tolerance" } }
+        },
+        "explain": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "properties": { "options": { "type": "array", "items": { "type": "string" } }, "report-text": { "type": "boolean" } }
+        },
+        "troubleshoot": {
+          "allOf": [{ "$ref": "#/$defs/prompted" }],
+          "required": ["faults"],
+          "properties": {
+            "faults": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  { "type": "string", "pattern": "^\\S+\\s+(open|short|shorted)$" },
+                  {
+                    "type": "object",
+                    "required": ["part", "kind"],
+                    "additionalProperties": false,
+                    "properties": { "part": { "type": "string" }, "kind": { "enum": ["open", "short", "value"] }, "props": { "type": "object" } }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "oneOf": [
+        { "required": ["read"] },
+        { "required": ["predict-number"] },
+        { "required": ["predict-choice"] },
+        { "required": ["do"] },
+        { "required": ["observe"] },
+        { "required": ["measure"] },
+        { "required": ["explain"] },
+        { "required": ["troubleshoot"] }
+      ]
+    }
+  }
+}

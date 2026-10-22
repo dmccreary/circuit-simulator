@@ -14,6 +14,8 @@ export const jkFlipFlopDescriptor: ElementDescriptor = {
     { name: "Q", at: { x: 4, y: 0 } },
     { name: "Q̄", at: { x: 4, y: 4 } },
   ],
+  // Imported Falstad chips are 6 units wide: Q and Q̄ move with the length (CircuitJS1 ChipElm).
+  stretchable: { min: 3, default: 4, terminals: [3, 4] },
   props: [...TIMING_PROPS, ...LEVEL_PROPS],
   readouts: [{ key: "q", unit: "" }],
 };

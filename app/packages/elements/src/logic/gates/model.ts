@@ -38,3 +38,15 @@ export const nandGateModel = factory((i) => not(and(i)));
 export const norGateModel = factory((i) => not(or(i)));
 export const xorGateModel = factory(xor);
 export const notGateModel = factory((i) => not(i[0]), 1);
+
+/** Gates with more than two inputs ("and-gate-3"). */
+export function wideGateModels(counts: readonly number[]): Record<string, ModelFactory> {
+  const out: Record<string, ModelFactory> = {};
+  for (const n of counts) {
+    out[`and-gate-${n}`] = factory(and, n);
+    out[`or-gate-${n}`] = factory(or, n);
+    out[`nand-gate-${n}`] = factory((i) => not(and(i)), n);
+    out[`nor-gate-${n}`] = factory((i) => not(or(i)), n);
+  }
+  return out;
+}

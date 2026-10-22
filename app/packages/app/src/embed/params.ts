@@ -79,8 +79,8 @@ export function parseEmbedParams(search: string, hash = "", embedded = false): E
 
   const lesson = get("lesson") || undefined;
   let mode = enumParam("mode", ["edit", "run", "view", "lesson"] as const) ?? (lesson ? "lesson" : "edit");
-  if (mode === "lesson") {
-    warnings.push("Lesson mode is not available yet; showing the circuit in run mode.");
+  if (mode === "lesson" && !lesson) {
+    warnings.push("mode=lesson needs a lesson parameter; showing the circuit in run mode.");
     mode = "run";
   }
 

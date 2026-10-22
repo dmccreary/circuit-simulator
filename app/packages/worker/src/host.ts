@@ -3,7 +3,7 @@
 // batching with back-pressure. Clock, scheduler and post are injected so the
 // loop runs headless in Node tests.
 
-import { createEngine, type Engine, type EngineOptions, type TimeScales } from "@cs/engine";
+import { createEngine, type Engine, type EngineOptions, type SampleBlock, type TimeScales } from "@cs/engine";
 import type { ModelFactory } from "@cs/elements";
 import { encodeFrame } from "./frame";
 import type { Command, Frame, RunState, SimEvent, WorkerMessage } from "./protocol";
@@ -23,6 +23,13 @@ export interface EngineHostDeps {
   maxUnacked?: number;
   /** Pending samples kept while the main thread is behind (default 100,000). */
   maxPendingSamples?: number;
+  /**
+   * Receives the history of channels added while paused, back-filled from the
+   * engine's history ring (simulation-engine.md §7.4). Optional because the
+   * worker protocol has no message for it yet (proposed: a "backfill"
+   * WorkerMessage carrying this block, merged by the History Store).
+   */
+  postBackfill?(block: SampleBlock): void;
 }
 
 const RUN_TICK_MS = 4;
@@ -140,6 +147,7 @@ export class EngineHost {
       case "setChannels":
         this.collect();
         if (this.pendTimes.length > 0) this.emit(this.deps.now()); // flush the old layout
+        this.backfill(e, cmd.channels);
         e.setChannels(cmd.channels);
         break;
       case "run":
@@ -202,6 +210,16 @@ export class EngineHost {
     this.diagVersion = -1;
     this.tsVersion = -1;
     this.dirty = true;
+  }
+
+  /** A probe added while paused shows its past at once instead of starting empty. */
+  private backfill(e: Engine, channels: Extract<Command, { type: "setChannels" }>["channels"]): void {
+    if (!this.deps.postBackfill || this.runState === "running" || this.runState === "stepping") return;
+    const old = new Set(e.channelIds);
+    const added = channels.filter((ch) => !old.has(ch.id));
+    if (added.length === 0) return;
+    const block = e.backfill(added);
+    if (block.times.length > 0) this.deps.postBackfill(block);
   }
 
   /** SIM-15: an edit that makes the circuit solvable resumes the previous state. */

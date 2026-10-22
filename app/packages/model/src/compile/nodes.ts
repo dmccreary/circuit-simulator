@@ -43,7 +43,12 @@ export interface NodeAssignment {
 
 const AUTO = /^(.*\/)?N(\d+)$/;
 
-export function assignNodes(g: Graph, previous: CompiledCircuit | undefined, preferredReference?: string): NodeAssignment {
+export function assignNodes(
+  g: Graph,
+  previous: CompiledCircuit | undefined,
+  preferredReference?: string,
+  implicitGround = false,
+): NodeAssignment {
   const uf = new UnionFind();
   for (const k of g.vertices.keys()) uf.find(k);
   for (const e of g.edges) uf.union(e.a, e.b);
@@ -113,7 +118,7 @@ export function assignNodes(g: Graph, previous: CompiledCircuit | undefined, pre
   // Index 0 is ground, or a stand-in reference node when there is none.
   let refRoot = groundRoot;
   let referenceName: string | undefined;
-  if (refRoot === undefined && roots.length > 0) {
+  if (refRoot === undefined && roots.length > 0 && !implicitGround) {
     refRoot = preferredReference !== undefined && g.vertices.has(preferredReference) ? uf.find(preferredReference) : roots[0];
     referenceName = names.get(refRoot);
   }
@@ -133,7 +138,7 @@ export function assignNodes(g: Graph, previous: CompiledCircuit | undefined, pre
     }
     groups.push({ index, name: index === 0 ? "GND" : names.get(r)!, keys, points });
   }
-  return { groups, keyToNode, hasGround: groundRoot !== undefined, referenceName };
+  return { groups, keyToNode, hasGround: groundRoot !== undefined || implicitGround, referenceName };
 }
 
 /** Anchor name ("t:id:i" / "w:id") -> node name in the previous compilation. */

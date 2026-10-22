@@ -26,6 +26,8 @@ export interface FalstadElement {
   params: string[];
   raw: string;
   line: number; // 1-based
+  /** Wire route through intermediate points, Falstad pixels, end points included (XML RoutedWireElm). */
+  route?: [number, number][];
 }
 
 export interface FalstadScope {
@@ -163,6 +165,12 @@ function parseSlider(rest: string[], raw: string): FalstadSlider {
   if (flags & 1) k++; // shared-slider index
   const text = unescapeFalstad(rest[k++] ?? "");
   return { element, flags, editItem, min, max, text, raw };
+}
+
+/** CustomLogicModel.escape(): the inverse of unescapeFalstad, so a token never holds a space. */
+export function escapeFalstad(s: string): string {
+  if (s === "") return "\\0";
+  return s.replace(/[\\\n\r +=#&]/g, (c) => ({ "\\": "\\\\", "\n": "\\n", "\r": "\\r", " ": "\\s", "+": "\\p", "=": "\\q", "#": "\\h", "&": "\\a" })[c] ?? c);
 }
 
 /** CustomLogicModel.unescape(). */

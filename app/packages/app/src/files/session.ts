@@ -16,7 +16,12 @@ import {
 import type { AppController } from "../controller";
 import { t } from "../messages";
 import { CIRCUIT_EXTENSION, type FilePlatform } from "./platform";
-import { baseName, readCircuitText } from "./read-circuit";
+import { baseName } from "./base-name";
+
+// The file readers (the Falstad importer above all) are a separate chunk
+// (design/index.md §2 goal 4), fetched when the page is idle or on first open.
+let readers: typeof import("./read-circuit") | undefined;
+const loadReaders = () => import("./read-circuit").then((m) => (readers = m));
 import { parseStartupUrl, type StartupRequest } from "./startup-url";
 import { createFilesUi, type FilesUi } from "./ui-state";
 
@@ -49,6 +54,8 @@ export class FileSession {
     public platform: FilePlatform,
   ) {
     this.savedDoc = c.edits.doc;
+    const idle = (globalThis as { requestIdleCallback?: (fn: () => void) => void }).requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 0));
+    idle(() => void loadReaders().catch(() => undefined));
     c.edits.onPatches((b) => {
       if (!b.provisional) for (const l of [...this.changeListeners]) l();
     });
@@ -138,6 +145,7 @@ export class FileSession {
   /** Open file contents (native or Falstad text). */
   async openText(text: string, name?: string, handle?: unknown, opts: { force?: boolean } = {}): Promise<boolean> {
     try {
+      const { readCircuitText } = readers ?? (await loadReaders());
       const r = readCircuitText(text, { name, isKnownType: (ty) => this.c.resolver.traits(ty).known });
       // Only a native file can be saved back in place.
       const native = r.format === "native";

@@ -1,8 +1,9 @@
+import type { Point } from "@cs/model";
 import type { ToolSpec } from "../app-state";
 import type { CanvasPointer, KeyInput, Tool, ToolContext } from "./types";
 import { SelectTool } from "./select";
 import { PlaceTool } from "./place";
-import { WireTool } from "./wire";
+import { WireTool, type KeyboardWireHooks } from "./wire";
 import { ProbeTool } from "./probe";
 
 export function createTool(spec: ToolSpec): Tool {
@@ -21,6 +22,8 @@ export function createTool(spec: ToolSpec): Tool {
 /** Holds exactly one active tool and routes canvas input to it (app-shell.md §5.1). */
 export class ToolController {
   tool: Tool = new SelectTool();
+  /** Last pointer position over the canvas (CSS px), so Paste can land at the pointer (EDT-22). */
+  lastPointer: Point | undefined;
 
   constructor(private ctx: ToolContext) {}
 
@@ -32,24 +35,41 @@ export class ToolController {
   }
 
   pointerDown(e: CanvasPointer): void {
+    this.lastPointer = { x: e.x, y: e.y };
     this.tool.onPointerDown?.(e, this.ctx);
   }
   pointerMove(e: CanvasPointer): void {
+    this.lastPointer = { x: e.x, y: e.y };
     this.tool.onPointerMove?.(e, this.ctx);
   }
   pointerUp(e: CanvasPointer): void {
     this.tool.onPointerUp?.(e, this.ctx);
   }
 
-  /** Esc cancels the tool's gesture, then returns to Select. */
+  /** Esc cancels the tool's gesture, then returns to Select, then clears the selection (EDT-18). */
   key(e: KeyInput): boolean {
     if (this.tool.onKey?.(e, this.ctx)) return true;
     if (e.key === "Escape") {
-      if (this.tool.id === "select") this.tool.cancel?.(this.ctx);
-      else this.ctx.setTool({ id: "select" });
+      if (this.tool.id !== "select") this.ctx.setTool({ id: "select" });
+      else {
+        this.tool.cancel?.(this.ctx);
+        if (this.ctx.selection().length) this.ctx.select([]);
+      }
       return true;
     }
     return false;
+  }
+
+  /** Abandon the current pointer gesture (a second finger turned it into pan/zoom). */
+  cancelGesture(): void {
+    this.tool.cancel?.(this.ctx);
+    this.ctx.invalidateOverlay();
+  }
+
+  /** ACC-04: start a wire from a terminal with the keyboard. Switches to the Wire tool if needed. */
+  startKeyboardWire(from: Point, hooks: KeyboardWireHooks = {}): void {
+    if (!(this.tool instanceof WireTool)) this.ctx.setTool({ id: "wire" });
+    if (this.tool instanceof WireTool) this.tool.startKeyboard(from, this.ctx, hooks);
   }
 
   drawOverlay(g: CanvasRenderingContext2D): void {

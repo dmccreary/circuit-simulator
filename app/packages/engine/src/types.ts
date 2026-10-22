@@ -53,7 +53,8 @@ export interface EngineOptions {
   staticMaxStep?: number;
   /** Accepted steps between restart checkpoints. Default 256. */
   checkpointInterval?: number;
-  solverFactory?: () => LinearSolver;
+  /** The linear solver for a system of `size` unknowns. Default: dense below 40 unknowns, sparse above. */
+  solverFactory?: (size: number) => LinearSolver;
 }
 
 export interface Engine {
@@ -87,6 +88,12 @@ export interface Engine {
   replaceNetlist(netlist: Netlist, identity: IdentityMap): void;
   reset(start?: "zero" | "steady"): void;
   stateAt(t: number): Float32Array | null;
+  /**
+   * Values of these channels at every step the history ring covers (§7.4):
+   * back-fills a probe added while paused. From the stored single-precision
+   * states, or re-simulated in full precision in checkpoint mode.
+   */
+  backfill(channels: ChannelSpec[]): SampleBlock;
   /**
    * Logic state per node at the latest solution, one byte each (index = NodeIndex):
    * 0 low, 1 high, 2 X, 3 Z, 255 analog node with no digital pins.

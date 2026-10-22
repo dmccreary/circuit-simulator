@@ -1,4 +1,5 @@
-import type { ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, StepInfo, Stamper } from "../api";
+import { acStimulus, type AcStimulus } from "../shared/acStamp";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -6,9 +7,15 @@ import { num, type Props } from "../shared/props";
 class CurrentSourceModel extends TwoTerminalModel {
   private i = 0.01;
   private scale = 1;
+  private ac: AcStimulus = { re: 0, im: 0 };
 
   protected applyProps(p: Props): void {
     this.i = num(p, "current", 0.01);
+    this.ac = acStimulus(p);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    s.current(this.a, this.b, this.ac.re, this.ac.im);
   }
 
   stampStep(s: Stamper, step: StepInfo): void {

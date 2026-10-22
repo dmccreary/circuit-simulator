@@ -1,8 +1,9 @@
 // FalstadCircuit -> CircuitDocument (files-and-persistence.md §4.1, FIL-16, FIL-17).
 
-import type { Annotation, CircuitDocument, MessageRef, Part, Point, Probe, Rotation, Slider, Wire } from "@cs/model";
+import type { Annotation, CircuitDocument, MessageRef, NetLabel, Part, Point, Probe, Rotation, Slider, Wire } from "@cs/model";
 import { emptyDocument, makeLane, makeProbe } from "../document";
 import { FALSTAD_PARTS, LABEL_PREFIX, ONE_POST_CODES, PLACEHOLDER_TYPE, type PartMapping } from "./mapping";
+import { isFalstadXml, parseFalstadXml } from "./xml-circuit";
 import { parseFalstadText, unescapeFalstad, type FalstadCircuit, type FalstadElement, type FalstadSettings } from "./text";
 
 export interface FalstadImportReport {
@@ -25,13 +26,16 @@ const HINTS: Record<number, string> = {
   5: "Cutoff frequency of {a} and {b}",
 };
 
+/** Import Falstad's text or XML (<cir ...>) circuit format (FIL-14, FIL-15). */
 export function importFalstad(text: string): { doc: CircuitDocument; report: FalstadImportReport } {
-  return mapFalstadCircuit(parseFalstadText(text));
+  return mapFalstadCircuit(isFalstadXml(text) ? parseFalstadXml(text) : parseFalstadText(text));
 }
 
 export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: CircuitDocument; report: FalstadImportReport } {
   const doc = emptyDocument(title);
-  const unit = chooseGrid(fc.elements);
+  // Text and drawings (TextElm, BoxElm, LineElm) sit anywhere; only connectable elements choose the grid.
+  const placed = fc.elements.filter((e) => !GRAPHIC_CODES.has(e.code));
+  const unit = chooseGrid(placed);
   const report: FalstadImportReport = {
     unsupported: [],
     warnings: [],
@@ -39,7 +43,7 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     gridPixels: unit,
     settings: fc.settings,
   };
-  if (unit === 16 && fc.elements.some((e) => [e.x1, e.y1, e.x2, e.y2].some((v) => v % 16 !== 0))) {
+  if (unit === 16 && placed.some((e) => [e.x1, e.y1, e.x2, e.y2].some((v) => v % 16 !== 0))) {
     report.warnings.push({ message: { key: "falstad.offGrid" } });
   }
   const g = (x: number, y: number): Point => ({ x: Math.round(x / unit), y: Math.round(y / unit) });
@@ -52,10 +56,19 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     return `${prefix}${counters[prefix]}`;
   };
 
+  /** Falstad end points on our grid, where straightened parts must not land. */
+  const occupied = new Set(fc.elements.flatMap((e) => [pointKey(g(e.x1, e.y1)), pointKey(g(e.x2, e.y2))]));
+  let n = 0;
+  const addWire = (a: Point, b: Point) => {
+    if (a.x === b.x && a.y === b.y) return;
+    const id = `w${++n}`;
+    const points = a.x === b.x || a.y === b.y ? [a, b] : [a, { x: b.x, y: a.y }, b];
+    doc.wires[id] = { id, points } satisfies Wire;
+  };
+
   /** Falstad element index -> our part id (wires and text map to null). */
   const byIndex: (string | null)[] = [];
   const mappings: (PartMapping | null)[] = [];
-  let n = 0;
 
   for (const el of fc.elements) {
     const p1 = g(el.x1, el.y1);
@@ -63,10 +76,20 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     if (el.code === "w") {
       byIndex.push(null);
       mappings.push(null);
-      if (p1.x === p2.x && p1.y === p2.y) continue;
-      const id = `w${++n}`;
-      const points = p1.x === p2.x || p1.y === p2.y ? [p1, p2] : [p1, { x: p2.x, y: p1.y }, p2];
-      doc.wires[id] = { id, points } satisfies Wire;
+      if (el.route) {
+        const pts = el.route.map(([x, y]) => g(x, y));
+        for (let k = 1; k < pts.length; k++) addWire(pts[k - 1], pts[k]);
+      } else addWire(p1, p2);
+      continue;
+    }
+    if (el.code === "207") {
+      // LabeledNodeElm: the post is point1; the name is drawn at point2 at the end of a lead.
+      byIndex.push(null);
+      mappings.push(null);
+      const name = el.flags & 4 ? unescapeFalstad(el.params[0] ?? "") : el.params.join(" ");
+      const id = `n${++n}`;
+      if (p1.x !== p2.x || p1.y !== p2.y) addWire(p1, p2);
+      doc.netLabels[id] = { id, name: name || id, at: p2 } satisfies NetLabel;
       continue;
     }
     if (el.code === "x") {
@@ -80,7 +103,7 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     const rule = FALSTAD_PARTS[el.code];
     let spec: PartMapping | null = null;
     try {
-      spec = rule ? rule(el) : null;
+      spec = rule ? rule(el, unit) : null;
     } catch {
       spec = null;
     }
@@ -95,8 +118,22 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     }
     const from = spec.place ? g(...spec.place.at) : spec.reversed ? p2 : p1;
     const toward = spec.place ? g(...spec.place.toward) : spec.reversed ? p1 : p2;
-    const geom = placement(from, toward);
-    if (geom.diagonal) report.warnings.push({ line: el.line, message: { key: "falstad.diagonal", values: { part: id } } });
+    let geom = placement(from, toward);
+    if (geom.diagonal) {
+      report.warnings.push({ line: el.line, message: { key: "falstad.diagonal", values: { part: id } } });
+      // A straightened two-terminal part keeps its far terminal connected through a wire,
+      // along whichever axis leaves that terminal and wire clear of other connections.
+      if (!spec.place && spec.posts === 2 && spec.fixedLength === undefined) {
+        for (const option of [geom, placement(from, toward, true)]) {
+          const end = axisEnd(from, option);
+          if (occupied.has(pointKey(end)) || !segmentClear(end, toward, occupied)) continue;
+          geom = option;
+          occupied.add(pointKey(end));
+          addWire(end, toward);
+          break;
+        }
+      }
+    }
     const part: Part = {
       id,
       type: spec.type,
@@ -109,9 +146,17 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       if (geom.length !== spec.fixedLength) {
         report.warnings.push({ line: el.line, message: { key: "falstad.lengthChanged", values: { part: id, from: geom.length, to: spec.fixedLength } } });
       }
-    } else if (spec.posts >= 2) part.length = geom.length;
+    } else if (spec.posts >= 2 || spec.stretch) part.length = geom.length;
     if (spec.savedState) part.savedState = spec.savedState;
     doc.parts[id] = part;
+    for (const w of spec.wires ?? []) {
+      for (let k = 1; k < w.length; k++) addWire(g(...w[k - 1]), g(...w[k]));
+    }
+    if (spec.slider) {
+      const sid = `vs${Object.keys(doc.sliders).length + 1}`;
+      doc.sliders[sid] = { id: sid, part: id, prop: spec.slider.prop, min: spec.slider.min, max: spec.slider.max };
+    }
+    if (spec.approximate) report.warnings.push({ line: el.line, message: { key: "falstad.approximated", values: { part: id } } });
     byIndex.push(id);
     mappings.push(spec);
   }
@@ -134,6 +179,8 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
   return { doc, report };
 }
 
+const GRAPHIC_CODES = new Set(["x", "b", "423"]);
+
 function chooseGrid(els: FalstadElement[]): number {
   const coords = els.flatMap((e) => [e.x1, e.y1, e.x2, e.y2]);
   if (coords.every((v) => v % 16 === 0)) return 16;
@@ -142,12 +189,30 @@ function chooseGrid(els: FalstadElement[]): number {
 }
 
 /** Two-point placement -> rotation (clockwise, y down) and length along that axis. */
-function placement(a: Point, b: Point): { rot: Rotation; length: number; diagonal: boolean } {
+function placement(a: Point, b: Point, minorAxis = false): { rot: Rotation; length: number; diagonal: boolean } {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const diagonal = dx !== 0 && dy !== 0;
-  if (Math.abs(dx) >= Math.abs(dy)) return { rot: dx >= 0 ? 0 : 180, length: Math.abs(dx), diagonal };
+  if (Math.abs(dx) >= Math.abs(dy) !== minorAxis) return { rot: dx >= 0 ? 0 : 180, length: Math.abs(dx), diagonal };
   return { rot: dy > 0 ? 90 : 270, length: Math.abs(dy), diagonal };
+}
+
+const pointKey = (p: Point) => `${p.x},${p.y}`;
+
+/** Far terminal of a straightened part: `length` along its rotation from `a`. */
+function axisEnd(a: Point, geom: { rot: Rotation; length: number }): Point {
+  const r = (geom.rot * Math.PI) / 180;
+  return { x: a.x + Math.round(Math.cos(r)) * geom.length, y: a.y + Math.round(Math.sin(r)) * geom.length };
+}
+
+/** No occupied point strictly inside the straight segment a-b. */
+function segmentClear(a: Point, b: Point, occupied: Set<string>): boolean {
+  const n = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+  for (let k = 1; k < n; k++) {
+    const p = { x: a.x + Math.round(((b.x - a.x) * k) / n), y: a.y + Math.round(((b.y - a.y) * k) / n) };
+    if (occupied.has(pointKey(p))) return false;
+  }
+  return true;
 }
 
 // TextElm: size text (escaped when flag 4 is set, else the rest of the line)

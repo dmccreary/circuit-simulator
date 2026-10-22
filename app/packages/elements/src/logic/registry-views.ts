@@ -2,6 +2,7 @@
 import type { ElementView } from "../api";
 import { clockView } from "./clock/view";
 import { dFlipFlopView } from "./d-flip-flop/view";
+import { WIDE_GATE_INPUTS } from "./gates/geometry";
 import { andGateView, nandGateView, norGateView, notGateView, orGateView, xorGateView } from "./gates/view";
 import { logicInputView } from "./input/view";
 import { jkFlipFlopView } from "./jk-flip-flop/view";
@@ -19,4 +20,12 @@ export const LOGIC_VIEWS: Record<string, ElementView> = {
   "xor-gate": xorGateView,
   "d-flip-flop": dFlipFlopView,
   "jk-flip-flop": jkFlipFlopView,
+  ...Object.fromEntries(
+    WIDE_GATE_INPUTS.flatMap((n) => [
+      [`and-gate-${n}`, andGateView],
+      [`or-gate-${n}`, orGateView],
+      [`nand-gate-${n}`, nandGateView],
+      [`nor-gate-${n}`, norGateView],
+    ]),
+  ),
 };

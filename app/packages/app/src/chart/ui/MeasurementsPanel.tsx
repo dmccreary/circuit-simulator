@@ -26,7 +26,7 @@ export function MeasurementsPanel() {
 
 function ProbeMeasurements({ probe }: { probe: Probe }) {
   const c = useController();
-  const theme = themeFor(useApp((s) => s.dark));
+  const theme = themeFor(useApp((s) => s.theme ?? s.dark));
   const unit = probeUnit(probe);
   const kinds = probe.measurements.map((m) => m.kind);
   const values = usePolled(() => {

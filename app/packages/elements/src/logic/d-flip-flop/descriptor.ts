@@ -15,6 +15,8 @@ export const dFlipFlopDescriptor: ElementDescriptor = {
     { name: "S", at: { x: 2, y: -2 } },
     { name: "R", at: { x: 2, y: 4 } },
   ],
+  // Imported Falstad chips are 6 units wide: Q and Q̄ move with the length (CircuitJS1 ChipElm).
+  stretchable: { min: 3, default: 4, terminals: [2, 3] },
   props: [...TIMING_PROPS, ...LEVEL_PROPS],
   readouts: [{ key: "q", unit: "" }],
 };

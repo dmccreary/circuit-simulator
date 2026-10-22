@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -12,6 +12,10 @@ class VoltmeterModel extends TwoTerminalModel {
 
   stampStatic(s: Stamper): void {
     if (this.g > 0) s.conductance(this.a, this.b, this.g);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    if (this.g > 0) s.admittance(this.a, this.b, this.g, 0);
   }
 
   protected current(x: SolutionView): number {

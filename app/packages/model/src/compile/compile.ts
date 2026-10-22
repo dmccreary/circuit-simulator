@@ -11,7 +11,12 @@ export function compile(doc: CircuitDocument, resolver: PartResolver, previous?:
   const g = collect(doc, resolver);
 
   const firstSource = g.elements.find((e) => e.topLevel && e.traits.voltageSource && e.keys.length >= 2);
-  const na = assignNodes(g, previous, firstSource?.keys[1]);
+  // One-terminal sources (rails, logic parts) are referenced to ground themselves, so with no
+  // ground symbol the reference is a node of its own, as in CircuitJS1's analyzeCircuit().
+  const implicitGround = g.elements.some(
+    (e) => e.topLevel && e.keys.length === 1 && (e.traits.voltageSource || (e.traits.digitalPins?.length ?? 0) > 0),
+  );
+  const na = assignNodes(g, previous, firstSource?.keys[1], implicitGround);
 
   const els = g.elements.map((rec) => ({ rec, nodes: rec.keys.map((k) => na.keyToNode.get(k) ?? 0) }));
   const elements: NetlistElement[] = els.map(({ rec, nodes }) => {

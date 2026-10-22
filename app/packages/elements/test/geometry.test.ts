@@ -75,7 +75,7 @@ describe("registry", () => {
           expect(p.default as number).toBeLessThanOrEqual(p.range[1]);
         }
       }
-      if (d.stretchable) expect(d.terminals[1].at).toEqual({ x: d.stretchable.default, y: 0 });
+      if (d.stretchable && !d.stretchable.terminals) expect(d.terminals[1].at).toEqual({ x: d.stretchable.default, y: 0 });
       expect(d.terminals[0].at).toEqual({ x: 0, y: 0 });
     }
   });

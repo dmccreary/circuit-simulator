@@ -1,5 +1,6 @@
 import type { Diagnostic } from "@cs/model";
 import type { RunState } from "@cs/worker";
+import type { ThemeName } from "@cs/render";
 import { createStore } from "./store";
 
 export type ToolSpec =
@@ -20,6 +21,8 @@ export interface AppState {
   canUndo: boolean;
   canRedo: boolean;
   dark: boolean;
+  /** Theme by name; absent means light or dark from `dark`. */
+  theme?: ThemeName;
   diagnostics: Omit<Diagnostic, "fixes">[];
   workerError?: string;
 }

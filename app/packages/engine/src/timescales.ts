@@ -8,10 +8,11 @@
 // eigenproblem is as small as the number of reactive unknowns.
 
 import type { StepInfo } from "@cs/elements";
-import { MnaSystem } from "./assembly";
+import { MnaSystem, SparseMnaSystem } from "./assembly";
 import { VectorView, type Circuit } from "./circuit";
 import { eigenvalues } from "./eigen";
-import { DenseLU, SingularError } from "./solver";
+import { DenseLU, SingularError, SPARSE_MIN_SIZE } from "./solver";
+import { SparseLU } from "./sparse-lu";
 import { stampStatic, stampStep } from "./stamping";
 
 export interface TimeScales {
@@ -44,6 +45,7 @@ export function sourcePeriods(c: Circuit): number[] {
 export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): number[] {
   const n = c.size;
   if (n === 0) return [];
+  if (n >= SPARSE_MIN_SIZE) return modes(sparseReduced(c, x, t));
   const sys = new MnaSystem(n);
   stampStatic(c, sys);
   const view = new VectorView(x);
@@ -92,6 +94,67 @@ export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): numbe
       K[ci * k + cj] = col[i];
     });
   });
+  return modes({ K, k });
+}
+
+/** The same reduction as above with sparse storage and SparseLU, for large circuits. */
+function sparseReduced(c: Circuit, x: Float64Array, t: number): { K: Float64Array; k: number } | null {
+  const n = c.size;
+  const sys = new SparseMnaSystem(n, c.nodeCount);
+  stampStatic(c, sys);
+  const view = new VectorView(x);
+  const step = (dt: number): StepInfo => ({ kind: "transient", t, dt, method: "be", gmin: 1e-12, sourceScale: 1 });
+  stampStep(c, sys, step(1), view, 0);
+  const A1 = sys.values().slice();
+  stampStep(c, sys, step(0.5), view, 0);
+  const A2 = sys.values();
+  const nnz = A2.length;
+  const { rows, cols } = sys.pattern();
+  const C = new Float64Array(nnz);
+  const G = new Float64Array(nnz);
+  for (let s = 0; s < nnz; s++) {
+    const a1 = s < A1.length ? A1[s] : 0;
+    C[s] = A2[s] - a1;
+    G[s] = 2 * a1 - A2[s];
+  }
+  let scale = 1e-300;
+  for (let s = 0; s < A1.length; s++) scale = Math.max(scale, Math.abs(A1[s]));
+  for (let s = 0; s < nnz; s++) if (Math.abs(C[s]) <= 1e-13 * scale) C[s] = 0;
+  // Node diagonals are the first nodeCount slots (SparseMnaSystem constructor).
+  for (let u = 0; u < c.nodeCount; u++) G[u] += 1e-12;
+
+  const colSlots: number[][] = Array.from({ length: n }, () => []);
+  for (let s = 0; s < nnz; s++) if (C[s] !== 0) colSlots[cols![s]].push(s);
+  const S: number[] = [];
+  for (let j = 0; j < n; j++) if (colSlots[j].length > 0) S.push(j);
+  if (S.length === 0) return null;
+
+  const lu = new SparseLU();
+  lu.analyze(sys.pattern());
+  try {
+    lu.factor(G);
+  } catch (e) {
+    if (e instanceof SingularError) return null;
+    throw e;
+  }
+  const k = S.length;
+  const K = new Float64Array(k * k);
+  const col = new Float64Array(n);
+  S.forEach((j, cj) => {
+    col.fill(0);
+    for (const s of colSlots[j]) col[rows![s]] = C[s];
+    lu.solve(col);
+    S.forEach((i, ci) => {
+      K[ci * k + cj] = col[i];
+    });
+  });
+  return { K, k };
+}
+
+/** Time scales from the eigenvalues mu of the reduced G^-1 C (s = -1/mu). */
+function modes(reduced: { K: Float64Array; k: number } | null): number[] {
+  if (!reduced) return [];
+  const { K, k } = reduced;
   const eig = eigenvalues(K, k);
   if (!eig) return [];
   const out: number[] = [];

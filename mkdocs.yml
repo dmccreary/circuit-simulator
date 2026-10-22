@@ -65,6 +65,7 @@ nav:
       - List of MicroSims: sims/index.md
       - Circuit Simulator Architecture: sims/simulator-architecture/index.md
       - Embedding the Simulator: sims/simulator-embed-demo/index.md
+      - Guided Simulator Lessons: sims/simulator-lessons/index.md
 
   - License: license.md
   - Contact: contact.md

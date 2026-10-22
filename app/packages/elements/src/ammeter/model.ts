@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -19,6 +19,11 @@ class AmmeterModel extends TwoTerminalModel {
   stampStep(s: Stamper, _step: StepInfo): void {
     s.voltageSource(this.branch, this.a, this.b, 0);
     if (this.burden > 0) s.matrix(this.branch, this.branch, -this.burden);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    s.voltageSource(this.branch, this.a, this.b, 0, 0);
+    if (this.burden > 0) s.matrix(this.branch, this.branch, -this.burden, 0);
   }
 
   protected current(x: SolutionView): number {

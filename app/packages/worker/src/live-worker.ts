@@ -1,8 +1,9 @@
 // Entry point of the live simulation worker (design/index.md §4.1).
 // Create with: new Worker(new URL("./live-worker.ts", import.meta.url), { type: "module" })
 
-import { getModelFactory } from "@cs/elements/models";
+import { ensureTypes, getModelFactory, typesLoaded } from "@cs/elements/models";
 import { EngineHost } from "./host";
+import { createModelGate, netlistTypes } from "./model-gate";
 import { PROTOCOL_VERSION, type Command, type WorkerMessage } from "./protocol";
 
 interface WorkerScope {
@@ -29,5 +30,14 @@ const host = new EngineHost({
   getModelFactory,
 });
 
-scope.onmessage = (ev) => host.handle(ev.data);
+// Load the model chunks a netlist needs before the host builds its engine.
+const handle = createModelGate<Command>({
+  deliver: (cmd) => host.handle(cmd),
+  typesOf: netlistTypes,
+  typesLoaded,
+  ensureTypes,
+  onError: (e) => console.error("Could not load part models", e),
+});
+
+scope.onmessage = (ev) => handle(ev.data);
 scope.postMessage({ type: "ready", protocolVersion: PROTOCOL_VERSION });

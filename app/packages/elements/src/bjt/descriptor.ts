@@ -17,6 +17,9 @@ function terminals(pnp: boolean): TerminalSpec[] {
   ];
 }
 
+/** Imported at other Falstad sizes the collector and emitter move with the length (CircuitJS1 TransistorElm). */
+const STRETCH_BJT = { min: 2, default: BJT_LENGTH, terminals: [1, 2] };
+
 const props: PropSpec[] = [
   { key: "beta", unit: "", range: [1, 1e5], default: 100, sliderable: true, showOnCanvas: true },
   { key: "betaReverse", unit: "", range: [0.01, 1e3], default: 1 },
@@ -42,6 +45,7 @@ export const npnDescriptor: ElementDescriptor = {
   aliases: ["npn", "transistor", "bjt", "2n3904", "bipolar"],
   labelPrefix: "Q",
   terminals: terminals(false),
+  stretchable: STRETCH_BJT,
   props,
   readouts,
 };
@@ -52,6 +56,7 @@ export const pnpDescriptor: ElementDescriptor = {
   aliases: ["pnp", "transistor", "bjt", "2n3906", "bipolar"],
   labelPrefix: "Q",
   terminals: terminals(true),
+  stretchable: STRETCH_BJT,
   props,
   readouts,
 };

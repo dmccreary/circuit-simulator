@@ -1,4 +1,4 @@
-import type { Rotation } from "@cs/model";
+import { rotateSelection, terminalsOf } from "../edit/transform";
 import type { CommandRegistry } from "./registry";
 import type { AppController } from "../controller";
 
@@ -31,13 +31,8 @@ export function registerBuiltinCommands(r: CommandRegistry<AppController>): void
     label: { key: "cmd.rotate" },
     defaultKeys: ["R"],
     when: (c) => c.selectedParts().length > 0,
-    run: (c) =>
-      c.edits.edit({ key: "edit.rotate" }, (d) => {
-        for (const id of c.selectedParts()) {
-          const o = d.parts[id].orientation;
-          d.parts[id].orientation = { ...o, rot: ((o.rot + 90) % 360) as Rotation };
-        }
-      }),
+    // EDT-21: around the selection's center (a lone part turns about its own middle).
+    run: (c) => c.edits.edit({ key: "edit.rotate" }, (d) => rotateSelection(d, c.store.get().selection, terminalsOf, true)),
   });
   r.register({
     id: "edit.delete",

@@ -1,5 +1,5 @@
 import type { NetlistElement, NodeIndex } from "@cs/model";
-import type { ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import type { ComplexStamper, ElementModel, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
 import { init } from "../shared/modelKit";
 import { bool, num, type Props } from "../shared/props";
 
@@ -69,6 +69,17 @@ class TransformerModel implements ElementModel {
       s.matrix(this.b2, this.b1, -r12);
       s.matrix(this.b2, this.b2, -r22);
     }
+  }
+
+  /** v1 = jω(L1·i1 + M·i2), v2 = jω(M·i1 + L2·i2) */
+  stampAC(s: ComplexStamper, _op: SolutionView, omega: number): void {
+    const [p1, m1, p2, m2] = this.n;
+    s.voltageSource(this.b1, p1, m1, 0, 0);
+    s.voltageSource(this.b2, p2, m2, 0, 0);
+    s.matrix(this.b1, this.b1, 0, -omega * this.l1);
+    s.matrix(this.b1, this.b2, 0, -omega * this.m);
+    s.matrix(this.b2, this.b1, 0, -omega * this.m);
+    s.matrix(this.b2, this.b2, 0, -omega * this.l2);
   }
 
   accept(x: SolutionView, _step: StepInfo): void {

@@ -9,6 +9,7 @@ import {
   notGateDescriptor,
   orGateDescriptor,
   xorGateDescriptor,
+  WIDE_GATE_DESCRIPTORS,
 } from "./gates/descriptor";
 import { logicInputDescriptor } from "./input/descriptor";
 import { jkFlipFlopDescriptor } from "./jk-flip-flop/descriptor";
@@ -26,4 +27,5 @@ export const LOGIC_DESCRIPTORS: readonly ElementDescriptor[] = [
   xorGateDescriptor,
   dFlipFlopDescriptor,
   jkFlipFlopDescriptor,
+  ...WIDE_GATE_DESCRIPTORS,
 ];

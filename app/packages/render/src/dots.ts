@@ -36,6 +36,24 @@ export function polylineLength(pts: readonly Point[]): number {
   return len;
 }
 
+/** pointAlong() written into `out`, for per-frame drawing without allocation. */
+export function pointAlongInto(pts: readonly Point[], d: number, out: { x: number; y: number }): void {
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    if (d <= l || i === pts.length - 1) {
+      const t = l === 0 ? 0 : Math.min(1, d / l);
+      out.x = a.x + (b.x - a.x) * t;
+      out.y = a.y + (b.y - a.y) * t;
+      return;
+    }
+    d -= l;
+  }
+  out.x = pts[0].x;
+  out.y = pts[0].y;
+}
+
 /** The point at distance d along a polyline. */
 export function pointAlong(pts: readonly Point[], d: number): Point {
   for (let i = 1; i < pts.length; i++) {

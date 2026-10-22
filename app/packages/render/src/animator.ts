@@ -3,7 +3,7 @@ import { terminalCurrentOffsets } from "@cs/model";
 import type { ElementView } from "@cs/elements";
 import type { ViewTransform } from "./transform";
 import type { Theme } from "./theme";
-import { AutoScale, DOT_SPACING, SPEED_CAP, TRICKLE_SPEED, dotOffsets, phaseDelta, pointAlong, polylineLength } from "./dots";
+import { AutoScale, DOT_SPACING, SPEED_CAP, TRICKLE_SPEED, frac, phaseDelta, pointAlong, pointAlongInto, polylineLength } from "./dots";
 
 /** One drawn path that carries dots: a wire segment or a path inside a part. */
 export interface DotPath {
@@ -69,8 +69,11 @@ export function pathCurrent(path: DotPath, display: ArrayLike<number>): number {
 export class CurrentAnimator {
   private paths: DotPath[] = [];
   private lengths: number[] = [];
-  private phases = new Map<string, number>();
-  private currents: number[] = [];
+  /** Phase per path, by index; carried over by key when the paths change. */
+  private phases = new Float64Array(0);
+  private currents = new Float64Array(0);
+  /** Scratch point for drawing (no per-dot allocation). */
+  private readonly pt = { x: 0, y: 0 };
   private auto = new AutoScale();
   running = false;
   reducedMotion = false;
@@ -80,15 +83,23 @@ export class CurrentAnimator {
   enabled = true;
 
   setPaths(paths: DotPath[]): void {
+    const old = new Map<string, number>();
+    this.paths.forEach((p, i) => old.set(p.key, this.phases[i]));
     this.paths = paths;
     this.lengths = paths.map((p) => polylineLength(p.points));
-    const keep = new Set(paths.map((p) => p.key));
-    for (const k of [...this.phases.keys()]) if (!keep.has(k)) this.phases.delete(k);
-    this.currents = paths.map(() => 0);
+    this.phases = Float64Array.from(paths, (p) => old.get(p.key) ?? 0);
+    this.currents = new Float64Array(paths.length);
   }
 
   setDisplay(display: ArrayLike<number> | undefined): void {
-    this.currents = this.paths.map((p) => (display ? pathCurrent(p, display) : 0));
+    const cur = this.currents;
+    for (let i = 0; i < this.paths.length; i++) cur[i] = display ? pathCurrent(this.paths[i], display) : 0;
+  }
+
+  /** Phase of a path by key (tests, inspection). */
+  phaseOf(key: string): number {
+    const i = this.paths.findIndex((p) => p.key === key);
+    return i < 0 ? 0 : this.phases[i];
   }
 
   get k(): number {
@@ -112,59 +123,84 @@ export class CurrentAnimator {
   }
 
   resetPhases(): void {
-    this.phases.clear();
+    this.phases.fill(0);
     this.auto.reset();
   }
 
   private moving(): boolean {
     const k = this.k;
-    return this.currents.some((c) => Math.abs(k * c) >= TRICKLE_SPEED);
+    for (let i = 0; i < this.currents.length; i++) if (Math.abs(k * this.currents[i]) >= TRICKLE_SPEED) return true;
+    return false;
   }
 
   private advance(dt: number): void {
     const k = this.k;
     const dir = this.electronFlow ? -1 : 1;
-    this.paths.forEach((p, i) => {
+    for (let i = 0; i < this.paths.length; i++) {
       const d = phaseDelta(dir * this.currents[i], k, dt);
-      if (d !== 0) this.phases.set(p.key, (this.phases.get(p.key) ?? 0) + d);
-    });
+      if (d !== 0) this.phases[i] += d;
+    }
   }
 
+  /**
+   * Every frame while dots move: all dots go into one path and one fill, all
+   * streaks into one stroke, with no allocation per dot (rendering.md §2.2).
+   */
   draw(ctx: CanvasRenderingContext2D, view: ViewTransform, theme: Theme): void {
     if (!this.enabled) return;
     const k = this.k;
     const s = view.scale;
+    const ox = view.offsetX;
+    const oy = view.offsetY;
     const r = Math.max(1.5, Math.min(3.5, 0.14 * s));
     ctx.fillStyle = theme.dot;
     ctx.strokeStyle = theme.dot;
     const dir = this.electronFlow ? -1 : 1;
-    this.paths.forEach((p, i) => {
-      const speed = dir * k * this.currents[i];
-      if (Math.abs(speed) < TRICKLE_SPEED) return;
-      const len = this.lengths[i];
-      if (len <= 0) return;
-      if (this.reducedMotion) {
-        drawArrow(ctx, view, p.points, len, Math.sign(speed), Math.min(1, Math.abs(speed) / 8));
-        return;
-      }
-      const streak = Math.abs(speed) >= SPEED_CAP;
-      for (const d of dotOffsets(this.phases.get(p.key) ?? 0, len, DOT_SPACING)) {
-        const q = view.toScreen(pointAlong(p.points, d));
-        if (streak) {
-          const back = view.toScreen(pointAlong(p.points, Math.max(0, d - 0.4 * Math.sign(speed))));
-          ctx.lineWidth = r * 1.4;
-          ctx.lineCap = "round";
-          ctx.beginPath();
-          ctx.moveTo(back.x, back.y);
-          ctx.lineTo(q.x, q.y);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
-          ctx.fill();
+    const q = this.pt;
+    if (this.reducedMotion) {
+      this.paths.forEach((p, i) => {
+        const speed = dir * k * this.currents[i];
+        const len = this.lengths[i];
+        if (Math.abs(speed) >= TRICKLE_SPEED && len > 0) drawArrow(ctx, view, p.points, len, Math.sign(speed), Math.min(1, Math.abs(speed) / 8));
+      });
+      return;
+    }
+    // Pass 0: round dots (one fill). Pass 1: streaks (one stroke).
+    for (let pass = 0; pass < 2; pass++) {
+      let any = false;
+      ctx.beginPath();
+      for (let i = 0; i < this.paths.length; i++) {
+        const speed = dir * k * this.currents[i];
+        const len = this.lengths[i];
+        if (Math.abs(speed) < TRICKLE_SPEED || len <= 0) continue;
+        const streak = Math.abs(speed) >= SPEED_CAP;
+        if (streak !== (pass === 1)) continue;
+        const pts = this.paths[i].points;
+        const f = frac(this.phases[i]);
+        for (let n = 0; (n + f) * DOT_SPACING <= len + 1e-9; n++) {
+          const d = (n + f) * DOT_SPACING;
+          pointAlongInto(pts, d, q);
+          const x = q.x * s + ox;
+          const y = q.y * s + oy;
+          if (streak) {
+            pointAlongInto(pts, Math.max(0, d - 0.4 * Math.sign(speed)), q);
+            ctx.moveTo(q.x * s + ox, q.y * s + oy);
+            ctx.lineTo(x, y);
+          } else {
+            ctx.moveTo(x + r, y);
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+          }
+          any = true;
         }
       }
-    });
+      if (!any) continue;
+      if (pass === 0) ctx.fill();
+      else {
+        ctx.lineWidth = r * 1.4;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+    }
   }
 }
 

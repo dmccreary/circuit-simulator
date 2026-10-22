@@ -59,3 +59,16 @@ export function digitalOscillationDiagnostic(elements: string[], t: number): Dia
     simTime: t,
   };
 }
+
+/** Some nodes had no defined voltage and were tied to 0 V (a section with no ground). */
+export function floatingDiagnostic(c: Circuit, ties: number[]): Diagnostic {
+  const names = c.netlist.nodeNames;
+  const nodes = ties.map((u) => names[u] ?? `N${u}`);
+  return {
+    id: "floating-tied",
+    severity: "info",
+    message: { key: "engine.floatingTied", values: { count: ties.length, nodes: nodes.join(", ") } },
+    elements: c.netlist.elements.filter((el) => el.nodes.some((n) => ties.includes(n))).map((el) => el.id),
+    nodes,
+  };
+}

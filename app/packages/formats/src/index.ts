@@ -21,6 +21,7 @@ export {
 export { base64urlDecode, base64urlEncode } from "./share/base64url";
 
 export {
+  escapeFalstad,
   parseFalstadText,
   unescapeFalstad,
   type FalstadCircuit,
@@ -33,4 +34,7 @@ export {
 export { importFalstad, mapFalstadCircuit, type FalstadImportReport } from "./falstad/mapper";
 export { FALSTAD_PARTS, LABEL_PREFIX, PLACEHOLDER_TYPE, type PartMapping } from "./falstad/mapping";
 export { decompressLz } from "./falstad/lz";
+export { exportFalstad, type FalstadExportReport } from "./falstad/export";
+export { isFalstadXml, parseFalstadXml } from "./falstad/xml-circuit";
+export { parseXml, XmlError, type XmlNode } from "./falstad/xml";
 export { readFalstadLink, type FalstadLinkContent } from "./falstad/link";

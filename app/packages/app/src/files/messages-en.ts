@@ -51,6 +51,7 @@ export const FILES_EN: Record<string, string> = {
   "falstad.offGrid": "Some elements were off Falstad's grid and were moved to the nearest grid point.",
   "falstad.diagonal": "{part} was drawn diagonally in Falstad and was straightened.",
   "falstad.lengthChanged": "{part} changed length from {from} to {to} grid units.",
+  "falstad.approximated": "{part} only approximates the Falstad element it replaces, so its behavior may differ slightly.",
   "falstad.scopeSkipped": "Scope {scope} could not be converted to a probe.",
   "falstad.sliderSkipped": "Slider “{slider}” could not be converted.",
 };

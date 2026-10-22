@@ -5,6 +5,8 @@ import { useLiveValue } from "../live";
 import { t } from "../messages";
 import type { ToolSpec } from "../app-state";
 import { FileMenu } from "../files/FileMenu";
+import { EditMenu } from "../edit/EditMenu";
+import { ViewMenu } from "../layout/ViewMenu";
 
 const SPEEDS: { value: number | "fit"; label: string }[] = [
   { value: 1e-6, label: "1 µs / s" },
@@ -40,13 +42,15 @@ export function TopBar() {
   return (
     <header className="topbar" role="toolbar" aria-label="Simulation">
       <FileMenu />
-      <Button className="btn primary" onPress={run("sim.runPause")} aria-keyshortcuts="Space">
+      <EditMenu />
+      <ViewMenu />
+      <Button className="btn primary" onPress={run("sim.runPause")} data-command="sim.runPause" aria-keyshortcuts="Space">
         {running ? `⏸ ${t("cmd.pause")}` : `▶ ${t("cmd.run")}`}
       </Button>
-      <Button className="btn" onPress={run("sim.step")} isDisabled={running}>
+      <Button className="btn" onPress={run("sim.step")} data-command="sim.step" isDisabled={running}>
         ⏭ {t("cmd.step")}
       </Button>
-      <Button className="btn" onPress={run("sim.reset")}>
+      <Button className="btn" onPress={run("sim.reset")} data-command="sim.reset">
         ⟲ {t("cmd.reset")}
       </Button>
       <span className="time" aria-live="off" title="Simulated time">
@@ -84,6 +88,7 @@ export function TopBar() {
         <ToggleButton
           key={tl.spec.id}
           className="btn tool"
+          data-command={tl.label}
           isSelected={tool === tl.spec.id}
           onChange={() => c.setTool(tl.spec)}
         >
@@ -91,6 +96,11 @@ export function TopBar() {
         </ToggleButton>
       ))}
       <span className="sep" />
+      {c.commands.allowed("analysis.open") && (
+        <Button className="btn" onPress={run("analysis.open")}>
+          {t("cmd.analysis.open")}
+        </Button>
+      )}
       <Button className="btn" onPress={run("view.fit")}>
         {t("cmd.fit")}
       </Button>

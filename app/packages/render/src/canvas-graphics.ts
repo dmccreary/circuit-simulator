@@ -86,6 +86,25 @@ export class CanvasSymbolGraphics implements SymbolGraphics {
     c.fill();
     c.globalAlpha = 1;
   }
+  /** Replay a recorded symbol in the current frame (setFrame first). */
+  drawRecording(rec: SymbolRecording): void {
+    const c = this.ctx;
+    for (const op of rec.ops) {
+      if (op.kind === "stroke") {
+        c.strokeStyle = this.color(op.color, "symbol");
+        c.lineWidth = Math.max(op.width ?? STROKE, 1.2 / this.scale);
+        c.lineCap = "round";
+        c.lineJoin = "round";
+        c.stroke(op.path);
+      } else if (op.kind === "fill") {
+        c.globalAlpha = op.alpha ?? 1;
+        c.fillStyle = this.color(op.color, "symbol");
+        c.fill(op.path);
+        c.globalAlpha = 1;
+      } else this.text(op.s, op.x, op.y, op.style);
+    }
+  }
+
   text(s: string, x: number, y: number, style?: TextStyle): void {
     const p = applyAffine(this.m, { x, y });
     const c = this.ctx;
@@ -102,5 +121,55 @@ export class CanvasSymbolGraphics implements SymbolGraphics {
     c.textBaseline = style?.baseline ?? "middle";
     c.fillText(s, p.x, p.y);
     c.restore();
+  }
+}
+
+/** One recorded drawing operation of a symbol, in the part's local frame. */
+type SymbolOp =
+  | { kind: "stroke"; path: Path2D; color: ColorToken | undefined; width: number | undefined }
+  | { kind: "fill"; path: Path2D; color: ColorToken | undefined; alpha: number | undefined }
+  | { kind: "text"; s: string; x: number; y: number; style: TextStyle | undefined };
+
+/**
+ * A symbol drawn once into Path2D objects (rendering.md §2.2). Paths live in
+ * the part's local frame and colors stay tokens, so one recording serves
+ * every orientation, zoom, theme and selection tint.
+ */
+export interface SymbolRecording {
+  ops: SymbolOp[];
+}
+
+/** True where the canvas Path2D API exists (browsers; not plain jsdom). */
+export const hasPath2D = (): boolean => typeof Path2D !== "undefined";
+
+/** SymbolGraphics that records into Path2D objects instead of drawing. */
+export class RecordingGraphics implements SymbolGraphics {
+  readonly ops: SymbolOp[] = [];
+  private path = new Path2D();
+
+  beginPath(): void {
+    this.path = new Path2D();
+  }
+  moveTo(x: number, y: number): void {
+    this.path.moveTo(x, y);
+  }
+  lineTo(x: number, y: number): void {
+    this.path.lineTo(x, y);
+  }
+  arc(cx: number, cy: number, r: number, a0: number, a1: number, ccw?: boolean): void {
+    this.path.arc(cx, cy, r, a0, a1, ccw);
+  }
+  closePath(): void {
+    this.path.closePath();
+  }
+  // Copy the path: later segments added without beginPath() must not leak into this op.
+  stroke(color?: ColorToken, width?: number): void {
+    this.ops.push({ kind: "stroke", path: new Path2D(this.path), color, width });
+  }
+  fill(color?: ColorToken, alpha?: number): void {
+    this.ops.push({ kind: "fill", path: new Path2D(this.path), color, alpha });
+  }
+  text(s: string, x: number, y: number, style?: TextStyle): void {
+    this.ops.push({ kind: "text", s, x, y, style });
   }
 }

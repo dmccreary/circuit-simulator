@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SetupContext, SolutionView, StepInfo, Stamper, UnknownIndex } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, type Props } from "../shared/props";
 
@@ -48,6 +48,12 @@ class InductorModel extends TwoTerminalModel {
     }
     s.voltageSource(this.branch, this.a, this.b, veq);
     if (req !== 0) s.matrix(this.branch, this.branch, -req);
+  }
+
+  /** V(a) - V(b) - jωL·i = 0 */
+  stampAC(s: ComplexStamper, _op: SolutionView, omega: number): void {
+    s.voltageSource(this.branch, this.a, this.b, 0, 0);
+    s.matrix(this.branch, this.branch, 0, -omega * this.l);
   }
 
   override accept(x: SolutionView, _step: StepInfo): void {

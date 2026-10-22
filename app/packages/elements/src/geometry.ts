@@ -29,6 +29,13 @@ export function localToDocument(part: Part, p: Point): Point {
 
 /** Terminal positions in the local frame, honouring part.length for stretchable parts. */
 export function localTerminals(part: Part, d: ElementDescriptor): Point[] {
+  const moving = d.stretchable?.terminals;
+  if (d.stretchable && moving) {
+    const dx = (part.length ?? d.stretchable.default) - d.stretchable.default;
+    const mid = d.stretchable.midTerminals ?? [];
+    const shift = (i: number) => (moving.includes(i) ? dx : mid.includes(i) ? Math.floor(dx / 2) : 0);
+    return d.terminals.map((t, i) => ({ x: t.at.x + shift(i), y: t.at.y }));
+  }
   return d.terminals.map((t, i) =>
     d.stretchable && i === 1 ? { x: part.length ?? d.stretchable.default, y: 0 } : { x: t.at.x, y: t.at.y },
   );

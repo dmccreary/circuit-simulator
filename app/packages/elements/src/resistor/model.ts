@@ -1,4 +1,4 @@
-import type { ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
+import type { ComplexStamper, ModelFactory, ReadoutSink, SolutionView, Stamper } from "../api";
 import { init, TwoTerminalModel } from "../shared/modelKit";
 import { num, R_MIN, type Props } from "../shared/props";
 
@@ -11,6 +11,10 @@ export class ResistorModel extends TwoTerminalModel {
 
   stampStatic(s: Stamper): void {
     s.conductance(this.a, this.b, 1 / this.r);
+  }
+
+  stampAC(s: ComplexStamper): void {
+    s.admittance(this.a, this.b, 1 / this.r, 0);
   }
 
   protected current(x: SolutionView): number {

@@ -11,7 +11,7 @@
 import type { ChannelSpec, Diagnostic, ElementId, IdentityMap, Netlist, PropValue } from "@cs/model";
 import type { StepInfo } from "@cs/elements";
 import { pow } from "@cs/dmath";
-import { MnaSystem } from "./assembly";
+import { MnaSystem, SparseMnaSystem, type Assembly } from "./assembly";
 import { ChannelSet, SampleBuffer, type SampleBlock } from "./channels";
 import {
   buildCircuit,
@@ -22,15 +22,16 @@ import {
   type Circuit,
   type FactoryLookup,
 } from "./circuit";
-import { digitalOscillationDiagnostic, noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
+import { digitalOscillationDiagnostic, floatingDiagnostic, noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
 import { DigitalKernel, DigitalOscillation, type DigitalSnapshot } from "./digital/kernel";
 import { HistoryRing } from "./history";
-import { DenseLU, SingularError, type LinearSolver } from "./solver";
+import { SingularError, type LinearSolver } from "./solver";
+import { createSolver } from "./solver-factory";
 import { stampStatic, stampStep } from "./stamping";
 import { computeTimeScales, type TimeScales } from "./timescales";
 import type { Engine, EngineEvent, EngineOptions, ParamChange, PauseCondition, StepOutcome } from "./types";
 
-type Resolved = Required<Omit<EngineOptions, "solverFactory">> & { solverFactory: () => LinearSolver };
+type Resolved = Required<Omit<EngineOptions, "solverFactory">> & { solverFactory: (size: number) => LinearSolver };
 
 const DEFAULTS: Resolved = {
   historySteps: 20000,
@@ -44,7 +45,7 @@ const DEFAULTS: Resolved = {
   beSteps: 2,
   staticMaxStep: 1e-3,
   checkpointInterval: 256,
-  solverFactory: () => new DenseLU(),
+  solverFactory: createSolver,
 };
 
 const GMIN = 1e-12;
@@ -61,6 +62,10 @@ interface Checkpoint {
   dtNext: number;
   beLeft: number;
   digital: DigitalSnapshot | null;
+  /** The solver's pivot order in effect, so a replay factors exactly as the original run did. */
+  solver: unknown;
+  /** The display state at t, as the ring stored it. */
+  display: Float32Array;
 }
 
 function cloneNetlist(n: Netlist): Netlist {
@@ -85,15 +90,21 @@ class EngineImpl implements Engine {
 
   private readonly o: Resolved;
   private c!: Circuit;
-  private sys!: MnaSystem;
+  private sys!: Assembly;
   private solver!: LinearSolver;
-  private factored: Float64Array | null = null;
+  /** Pattern version the solver last analyzed. */
+  private analyzed = -1;
+  /** Matrix values of the latest factorization (valid while hasFactored). */
+  private factored = new Float64Array(0);
+  private hasFactored = false;
   private x: Float64Array = new Float64Array(1);
   private display: Float64Array = new Float64Array(1);
   private dtNext = 0;
   private beLeft = 0;
   private solverDiags: Diagnostic[] = [];
   private configDiags: Diagnostic[] = [];
+  /** Notice that floating nodes were tied to ground (cleared with the circuit). */
+  private tieDiags: Diagnostic[] = [];
   private channelSpecs: ChannelSpec[] = [];
   private channels!: ChannelSet;
   private samples = new SampleBuffer([]);
@@ -103,6 +114,16 @@ class EngineImpl implements Engine {
   private pauseEnabled = true;
   private events: EngineEvent[] = [];
   private ring!: HistoryRing;
+  /**
+   * Option C of §7.4: the ring keeps only step times and stateAt() re-simulates
+   * from the nearest checkpoint, because full display states would exceed
+   * historyBudgetBytes.
+   */
+  private replayHistory = false;
+  /** Accepted steps between checkpoints (smaller in replay mode, to bound a scrub's replay). */
+  private cpInterval = 256;
+  /** True while stateAt()/backfill() re-simulate: nothing is recorded. */
+  private replaying = false;
   private checkpoints: Checkpoint[] = [];
   private sinceCheckpoint = 0;
   private dig: DigitalKernel | null = null;
@@ -156,7 +177,33 @@ class EngineImpl implements Engine {
   }
 
   stateAt(t: number): Float32Array | null {
-    return this.ring.stateAt(t);
+    if (!this.replayHistory) return this.ring.stateAt(t);
+    if (this.ring.size === 0 || t < this.ring.oldest || t > this.ring.newest) return null;
+    let out: Float32Array | null = null;
+    this.replayFrom(t, (display) => {
+      out = Float32Array.from(display);
+    });
+    return out;
+  }
+
+  backfill(channels: ChannelSpec[]): SampleBlock {
+    const set = new ChannelSet(channels, this.c);
+    const buf = new SampleBuffer(set.ids);
+    const values = new Float64Array(set.length);
+    if (!this.replayHistory) {
+      const row = new Float64Array(this.c.displaySize);
+      for (let i = 0; i < this.ring.size; i++) {
+        this.ring.entry(i, row);
+        set.evaluate(row, values);
+        buf.push(this.ring.timeAt(i), values);
+      }
+    } else if (this.ring.size > 0) {
+      this.replayFrom(this.ring.oldest, null, (t, display) => {
+        set.evaluate(display, values);
+        buf.push(t, values);
+      });
+    }
+    return buf.drain();
   }
 
   logicStates(): Uint8Array {
@@ -278,10 +325,11 @@ class EngineImpl implements Engine {
     this.c = buildCircuit(this.netlist, this.lookup);
     this.dig = DigitalKernel.create(this.c);
     if (this.dig) this.c.digital = this.dig;
-    this.sys = new MnaSystem(this.c.size);
-    this.solver = this.o.solverFactory();
-    this.solver.analyze({ size: this.c.size });
-    this.factored = null;
+    this.solver = this.o.solverFactory(this.c.size);
+    this.sys = this.solver.format === "coordinate" ? new SparseMnaSystem(this.c.size, this.c.nodeCount) : new MnaSystem(this.c.size);
+    this.solver.analyze(this.sys.pattern());
+    this.analyzed = this.sys.patternVersion;
+    this.hasFactored = false;
     this.x = new Float64Array(this.c.size + 1);
     this.display = new Float64Array(this.c.displaySize);
     stampStatic(this.c, this.sys);
@@ -289,8 +337,17 @@ class EngineImpl implements Engine {
 
   private makeRing(): HistoryRing {
     const width = this.c.displaySize;
-    const byBudget = Math.floor(this.o.historyBudgetBytes / (4 * Math.max(1, width) + 8));
-    return new HistoryRing(width, Math.min(this.o.historySteps, byBudget));
+    const { historySteps, historyBudgetBytes, checkpointInterval } = this.o;
+    this.replayHistory = historySteps * (4 * Math.max(1, width) + 8) > historyBudgetBytes;
+    if (!this.replayHistory) {
+      this.cpInterval = checkpointInterval;
+      return new HistoryRing(width, historySteps);
+    }
+    // Checkpoints instead: spend the budget on as many as fit across the history.
+    const cpBytes = 8 * (this.c.size + 1 + this.c.stateTotal) + 4 * width + 256;
+    const fit = Math.max(1, Math.floor((historyBudgetBytes - 8 * historySteps) / cpBytes));
+    this.cpInterval = Math.max(1, Math.min(checkpointInterval, Math.ceil(historySteps / fit)));
+    return new HistoryRing(0, historySteps);
   }
 
   private rebuildChannels(): void {
@@ -340,10 +397,17 @@ class EngineImpl implements Engine {
 
   private linearSolve(): Float64Array {
     const n = this.c.size;
-    const A = this.sys.A;
-    let same = this.factored !== null;
+    const sys = this.sys;
+    if (sys.patternVersion !== this.analyzed) {
+      this.solver.analyze(sys.pattern());
+      this.analyzed = sys.patternVersion;
+      this.hasFactored = false;
+    }
+    const A = sys.values();
+    // Unchanged matrix (a linear circuit at a fixed step): reuse the factorization (§3).
+    let same = this.hasFactored && this.factored.length === A.length;
     if (same) {
-      const f = this.factored!;
+      const f = this.factored;
       for (let i = 0; i < A.length; i++)
         if (A[i] !== f[i]) {
           same = false;
@@ -351,14 +415,15 @@ class EngineImpl implements Engine {
         }
     }
     if (!same) {
-      this.factored = null;
+      this.hasFactored = false;
       this.solver.factor(A);
-      this.factored = Float64Array.from(A);
+      if (this.factored.length !== A.length) this.factored = new Float64Array(A.length);
+      this.factored.set(A);
+      this.hasFactored = true;
     }
-    const rhs = Float64Array.from(this.sys.b);
-    if (n > 0) this.solver.solve(rhs);
     const x = new Float64Array(n + 1);
-    x.set(rhs, 1);
+    x.set(sys.b, 1);
+    if (n > 0) this.solver.solve(x.subarray(1));
     return x;
   }
 
@@ -482,7 +547,7 @@ class EngineImpl implements Engine {
     this.x = x;
     fillDisplay(this.c, x, this.display);
     this.channels.evaluate(this.display, this.channelValues);
-    this.ring.push(this.time, this.display);
+    if (!this.replaying) this.ring.push(this.time, this.display);
     this.recordSample();
   }
 
@@ -491,10 +556,34 @@ class EngineImpl implements Engine {
   }
 
   private handleSolveError(e: unknown): void {
+    if (e instanceof SingularError && this.tieFloatingNodes(e)) return;
     if (e instanceof SingularError) this.stop(singularDiagnostic(this.c, e.row, this.time));
     else if (e instanceof SolveFailure) this.stop(noConvergenceDiagnostic(this.c, this.time));
     else if (e instanceof DigitalOscillation) this.stop(digitalOscillationDiagnostic(e.elements, e.t));
     else throw e;
+  }
+
+  /**
+   * A singular node row means that node's voltage is undefined: tie it to
+   * ground and re-solve, once per node. True if the circuit then solves.
+   */
+  private tieFloatingNodes(first: SingularError): boolean {
+    const ties = (this.c.groundTies ??= []);
+    for (let e: unknown = first; e instanceof SingularError; ) {
+      const node = e.row + 1;
+      if (node > this.c.nodeCount || ties.includes(node)) return false;
+      ties.push(node);
+      try {
+        this.settle();
+        this.pushCheckpoint();
+        this.tieDiags = [floatingDiagnostic(this.c, ties)];
+        return true;
+      } catch (err) {
+        if (!(err instanceof SingularError || err instanceof SolveFailure || err instanceof DigitalOscillation)) throw err;
+        e = err;
+      }
+    }
+    return false;
   }
 
   private stop(d: Diagnostic): void {
@@ -523,7 +612,8 @@ class EngineImpl implements Engine {
   }
 
   private publishDiagnostics(): void {
-    const next = [...this.solverDiags, ...this.configDiags];
+    if (!this.c.groundTies?.length) this.tieDiags = [];
+    const next = [...this.solverDiags, ...this.configDiags, ...this.tieDiags];
     if (JSON.stringify(next) !== JSON.stringify(this.diagnostics)) {
       this.diagnostics = next;
       this.diagnosticsVersion++;
@@ -636,7 +726,7 @@ class EngineImpl implements Engine {
       this.x = x;
       this.display = display;
       this.channelValues = values;
-      this.ring.push(this.time, display);
+      if (!this.replaying) this.ring.push(this.time, display);
       this.recordSample();
       const grow = ratio > 0 ? Math.min(2, 0.9 * pow(ratio, -1 / 3)) : 2;
       this.dtNext = hitBp || hitDig || refined ? Math.min(proposal, limit) : Math.min(dt * grow, limit);
@@ -651,7 +741,7 @@ class EngineImpl implements Engine {
         }
         hitBp ||= hitDig;
       }
-      if (++this.sinceCheckpoint >= this.o.checkpointInterval) this.pushCheckpoint();
+      if (++this.sinceCheckpoint >= this.cpInterval) this.pushCheckpoint();
       let pause: PauseCondition | undefined;
       if (hit) {
         pause = hit.cond;
@@ -678,11 +768,7 @@ class EngineImpl implements Engine {
       let tol: number;
       if (c.hasBranch[i]) {
         let mag = 0;
-        c.branchOwner.forEach((owner, k) => {
-          if (owner !== i) return;
-          const u = c.nodeCount + 1 + k;
-          mag = Math.max(mag, Math.abs(x[u]), Math.abs(this.x[u]));
-        });
+        for (const u of c.branchesOf[i]) mag = Math.max(mag, Math.abs(x[u]), Math.abs(this.x[u]));
         tol = reltol * mag + lteCurrentTol;
       } else {
         const nodes = c.netlist.elements[i].nodes;
@@ -724,7 +810,7 @@ class EngineImpl implements Engine {
     this.commitSolution(this.x); // the old levels at the new time: edges stay vertical
     const x = this.syncDigital(this.x);
     if (x !== this.x) this.commitSolution(x);
-    if (++this.sinceCheckpoint >= this.o.checkpointInterval) this.pushCheckpoint();
+    if (++this.sinceCheckpoint >= this.cpInterval) this.pushCheckpoint();
     const cross = this.pauseEnabled && this.pauseConds.length > 0 ? this.crossing(before, this.channelValues) : null;
     if (cross) this.events.push({ t: this.time, kind: "pauseCondition", detail: cross.cond.id });
     return { ok: true, t: this.time, dt: this.time - t0, breakpoint: hit, pause: cross?.cond };
@@ -740,6 +826,8 @@ class EngineImpl implements Engine {
       dtNext: this.dtNext,
       beLeft: this.beLeft,
       digital: this.dig ? this.dig.save() : null,
+      solver: this.solver.snapshot?.(),
+      display: Float32Array.from(this.display),
     };
   }
 
@@ -750,11 +838,74 @@ class EngineImpl implements Engine {
     this.dtNext = cp.dtNext;
     this.beLeft = cp.beLeft;
     if (this.dig && cp.digital) this.dig.restore(cp.digital);
+    this.solver.restore?.(cp.solver);
+    this.hasFactored = false;
     fillDisplay(this.c, this.x, this.display);
     this.channels.evaluate(this.display, this.channelValues);
   }
 
+  /**
+   * Re-simulate from the latest checkpoint at or before t0 up to the present
+   * (§7.4 option C), then put the live state back exactly as it was.
+   * `at` receives the display of the latest step at or before t0; `each`
+   * receives every step from t0 on. Determinism makes the replay exact.
+   */
+  private replayFrom(t0: number, at: ((display: Float64Array) => void) | null, each?: (t: number, display: Float64Array) => void): void {
+    let k = -1;
+    for (let i = this.checkpoints.length - 1; i >= 0; i--)
+      if (this.checkpoints[i].t <= t0) {
+        k = i;
+        break;
+      }
+    if (k < 0) return;
+    const end = this.time;
+    const live = this.snapshot();
+    const liveDisplay = this.display.slice(); // restoreCheckpoint() overwrites this.display in place
+    const liveValues = this.channelValues.slice();
+    const saved = {
+      status: this.status,
+      solverDiags: this.solverDiags,
+      diagnostics: this.diagnostics,
+      diagnosticsVersion: this.diagnosticsVersion,
+      events: this.events.length,
+      sampling: this.sampling,
+      pauseEnabled: this.pauseEnabled,
+      sinceCheckpoint: this.sinceCheckpoint,
+    };
+    this.replaying = true;
+    this.sampling = false;
+    this.pauseEnabled = false;
+    try {
+      const cp = this.checkpoints[k];
+      this.restoreCheckpoint(cp);
+      const first = Float64Array.from(cp.display);
+      let prev: Float64Array = first;
+      if (each && cp.t >= t0) each(cp.t, first);
+      while (this.time < end) {
+        if (!this.step().ok) break;
+        if (at && this.time > t0) break;
+        prev = this.display;
+        if (each && this.time >= t0) each(this.time, this.display);
+      }
+      at?.(prev);
+    } finally {
+      this.restoreCheckpoint(live);
+      this.display = liveDisplay;
+      this.channelValues = liveValues;
+      this.status = saved.status;
+      this.solverDiags = saved.solverDiags;
+      this.diagnostics = saved.diagnostics;
+      this.diagnosticsVersion = saved.diagnosticsVersion;
+      this.events.length = saved.events;
+      this.sampling = saved.sampling;
+      this.pauseEnabled = saved.pauseEnabled;
+      this.sinceCheckpoint = saved.sinceCheckpoint;
+      this.replaying = false;
+    }
+  }
+
   private pushCheckpoint(): void {
+    if (this.replaying) return;
     this.sinceCheckpoint = 0;
     this.checkpoints.push(this.snapshot());
     // Keep only checkpoints that can still reach the ring's range.

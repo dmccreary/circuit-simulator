@@ -1,0 +1,45 @@
+/* Analyses panel (spec §14). Colors come from the theme's CSS custom properties. */
+.analyses-panel {
+  position: fixed;
+  right: 12px;
+  bottom: 36px;
+  width: min(760px, calc(100vw - 24px));
+  max-height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel, #fff);
+  color: var(--text, #1d2430);
+  border: 1px solid var(--border, #d5dae1);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.2);
+  z-index: 40;
+}
+.an-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border, #d5dae1); flex-wrap: wrap; }
+.an-head h2 { font-size: 14px; margin: 0; }
+.an-tabs { display: flex; gap: 2px; flex: 1; flex-wrap: wrap; }
+.an-tabs button { border: 1px solid transparent; background: none; color: inherit; padding: 4px 10px; border-radius: 4px; cursor: pointer; font: inherit; }
+.an-tabs button.active { border-color: var(--accent, #1565c0); color: var(--accent, #1565c0); font-weight: 600; }
+.an-body { overflow: auto; padding: 8px 10px 10px; }
+.an-scope { margin: 0 0 8px; color: var(--muted, #5a6372); font-size: 12px; }
+.an-form { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; }
+.an-field { display: flex; flex-direction: column; font-size: 11px; gap: 2px; }
+.an-field span { color: var(--muted, #5a6372); }
+.an-field input { width: 92px; }
+.an-runbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.an-note { font-size: 12px; margin: 4px 0; }
+.an-error { color: var(--danger, #c62828); }
+.an-balance { font-size: 12px; margin: 0 0 6px; }
+.an-plot { display: block; width: 100%; margin-bottom: 6px; cursor: crosshair; }
+.an-tables { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.an-table { border-collapse: collapse; font-size: 12px; }
+.an-table caption { text-align: left; font-weight: 600; padding-bottom: 2px; }
+.an-table th, .an-table td { border-bottom: 1px solid var(--border, #d5dae1); padding: 2px 8px; text-align: left; }
+.an-table th button { background: none; border: 0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+.an-table tbody tr { cursor: pointer; }
+.an-table tbody tr.selected { background: color-mix(in srgb, var(--accent, #1565c0) 15%, transparent); }
+.an-markers, .an-legend { list-style: none; padding: 0; margin: 4px 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.an-legend button { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.an-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+@media (max-width: 600px) {
+  .analyses-panel { left: 8px; right: 8px; width: auto; bottom: 8px; max-height: 85vh; }
+}

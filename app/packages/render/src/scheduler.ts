@@ -97,7 +97,9 @@ export class RenderScheduler {
     for (const l of todo) for (const fn of this.drawers.get(l) ?? []) fn();
     if (animating || this.dirty.size > 0) {
       this.lastMs = ms;
-      this.handle = this.clock.request((m) => this.frame(m));
+      // A drawer that invalidated during this frame has already called wake();
+      // requesting again would double the pending frames every frame.
+      if (this.handle === undefined) this.handle = this.clock.request((m) => this.frame(m));
     } else {
       this.lastMs = undefined;
     }

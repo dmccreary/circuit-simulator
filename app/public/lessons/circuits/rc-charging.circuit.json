@@ -1,0 +1,25 @@
+{
+  "format": "circuit-simulator",
+  "formatVersion": 1,
+  "meta": { "title": "RC charging", "description": "A 10 V battery charges C1 through R1. τ = RC = 1 s." },
+  "settings": { "realisticParts": false, "realisticRatings": false, "start": "zero", "seed": 1 },
+  "parts": [
+    { "id": "V1", "type": "battery", "label": "V1", "at": [0, 4], "rot": 90, "length": 4, "props": { "voltage": 10, "internalResistance": 0 } },
+    { "id": "R1", "type": "resistor", "label": "R1", "at": [2, 0], "rot": 0, "length": 4, "props": { "resistance": 10000 } },
+    { "id": "C1", "type": "capacitor", "label": "C1", "at": [10, 2], "rot": 90, "length": 4, "props": { "capacitance": 0.0001, "initialVoltage": 0 } },
+    { "id": "G1", "type": "ground", "label": "", "at": [0, 10], "rot": 0 }
+  ],
+  "wires": [
+    { "id": "w1", "points": [[0, 4], [0, 0], [2, 0]] },
+    { "id": "w2", "points": [[6, 0], [10, 0], [10, 2]] },
+    { "id": "w3", "points": [[10, 6], [10, 10], [0, 10]] },
+    { "id": "w4", "points": [[0, 10], [0, 8]] }
+  ],
+  "probes": [
+    { "id": "P1", "name": "V(C1)", "quantity": "voltage", "target": { "kind": "across", "part": "C1" }, "style": { "color": "probe.1", "width": 1.5 }, "lane": "L1", "flag": { "offset": [2, -1], "showValue": true }, "measurements": [] }
+  ],
+  "lanes": [
+    { "id": "L1", "kind": "analog", "yScale": { "mode": "auto" } }
+  ],
+  "view": { "center": [5, 5], "zoom": 2 }
+}

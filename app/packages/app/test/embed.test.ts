@@ -62,12 +62,15 @@ describe("embed parameters (spec §19.1, EMB-01)", () => {
     expect(p.warnings.length).toBe(5);
   });
 
-  test("share link in the fragment; lz-string ctz keeps its plus signs; lesson falls back to run", () => {
+  test("share link in the fragment; lz-string ctz keeps its plus signs; lesson mode needs a lesson", () => {
     expect(parseEmbedParams("", "#c=abc").c).toBe("abc");
     expect(parseEmbedParams("?ctz=CQ+AgjA").ctz).toBe("CQ+AgjA");
     const l = parseEmbedParams("?lesson=x.yaml");
-    expect(l.mode).toBe("run");
-    expect(l.warnings.length).toBe(1);
+    expect(l.mode).toBe("lesson");
+    expect(l.lesson).toBe("x.yaml");
+    const bare = parseEmbedParams("?mode=lesson");
+    expect(bare.mode).toBe("run");
+    expect(bare.warnings.length).toBe(1);
   });
 
   test("generated id is stable for the same URL", () => {

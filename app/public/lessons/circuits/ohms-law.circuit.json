@@ -1,0 +1,27 @@
+{
+  "format": "circuit-simulator",
+  "formatVersion": 1,
+  "meta": { "title": "Ohm's law", "description": "A DC source drives current through R1; the ammeter A1 reads it." },
+  "settings": { "realisticParts": false, "realisticRatings": false, "start": "zero", "seed": 1 },
+  "parts": [
+    { "id": "V1", "type": "dc-source", "label": "V1", "at": [0, 4], "rot": 90, "length": 4, "props": { "voltage": 5, "internalResistance": 0 } },
+    { "id": "A1", "type": "ammeter", "label": "A1", "at": [2, 0], "rot": 0, "length": 4, "props": { "burdenResistance": 0 } },
+    { "id": "R1", "type": "resistor", "label": "R1", "at": [8, 0], "rot": 0, "length": 4, "props": { "resistance": 1000 } },
+    { "id": "G1", "type": "ground", "label": "", "at": [0, 10], "rot": 0 }
+  ],
+  "wires": [
+    { "id": "w1", "points": [[0, 4], [0, 0], [2, 0]] },
+    { "id": "w2", "points": [[6, 0], [8, 0]] },
+    { "id": "w3", "points": [[12, 0], [14, 0], [14, 10], [0, 10]] },
+    { "id": "w4", "points": [[0, 10], [0, 8]] }
+  ],
+  "probes": [
+    { "id": "P1", "name": "V(R1)", "quantity": "voltage", "target": { "kind": "across", "part": "R1" }, "style": { "color": "probe.1", "width": 1.5 }, "lane": "L1", "flag": { "offset": [2, -1], "showValue": true }, "measurements": [] },
+    { "id": "P2", "name": "I(R1)", "quantity": "current", "target": { "kind": "through", "part": "R1", "reversed": false }, "style": { "color": "probe.2", "width": 1.5 }, "lane": "L2", "flag": { "offset": [2, 1], "showValue": true }, "measurements": [] }
+  ],
+  "lanes": [
+    { "id": "L1", "kind": "analog", "yScale": { "mode": "auto" } },
+    { "id": "L2", "kind": "analog", "yScale": { "mode": "auto" } }
+  ],
+  "view": { "center": [7, 5], "zoom": 2 }
+}

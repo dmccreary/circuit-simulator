@@ -1,7 +1,7 @@
 import type { CircuitDocument, CompiledCircuit, PartResolver, Point } from "@cs/model";
 import { classify, compile, createEditSystem, newId, normalize, paramChanges, type EditSystem } from "@cs/model";
 import { createPartResolver, getDescriptor, localToDocument, terminalPositions } from "@cs/elements";
-import { getView } from "@cs/elements/views";
+import { ensureTypes, getView } from "@cs/elements/views";
 import { decodeFrame, type Frame, type WorkerMessage } from "@cs/worker";
 import { createHistoryStore } from "@cs/history";
 import { formatValue, type Unit } from "@cs/units";
@@ -11,6 +11,8 @@ import {
   SchematicRenderer,
   probeColor,
   themeFor,
+  type Theme,
+  type ThemeName,
   type ChartLane,
   type ElementAccess,
   type HistorySource,
@@ -21,14 +23,17 @@ import "./diagnostic-messages";
 import { CommandRegistry } from "./commands/registry";
 import { isMacPlatform } from "./commands/keymap";
 import { registerBuiltinCommands } from "./commands/builtin";
+import { registerAnalysisCommands } from "./analysis/commands";
 import { installFiles } from "./files/install";
+import { installShellFeatures } from "./settings/install";
 import { SimClient, type WorkerPort } from "./sim/sim-client";
 import { ToolController } from "./tools/controller";
 import { ChartSession } from "./chart/session";
 import { buildChartLanes } from "./chart/lanes";
 import type { ToolContext } from "./tools/types";
 
-export const elementAccess: ElementAccess = { getView, getDescriptor, terminalPositions, localToDocument };
+// ensureTypes: the renderer loads lazy part-group views itself (circuit-model.md §5.4).
+export const elementAccess: ElementAccess = { getView, getDescriptor, terminalPositions, localToDocument, ensureTypes: (t) => ensureTypes(t) };
 
 /** Format a number for the chart axis: "2.5 V", "100 ms". */
 export function formatAxis(v: number, unit: string): string {
@@ -54,10 +59,14 @@ export class AppController {
   readonly commands: CommandRegistry<AppController>;
   readonly tools: ToolController;
   schematic: SchematicRenderer | undefined;
+  /** Feature modules (settings, keyboard focus, gestures) configure each new schematic here. */
+  readonly schematicHooks = new Set<(r: SchematicRenderer, host: HTMLElement) => void>();
   chart: ChartRenderer | undefined;
   /** Chart mode, window, trigger, cursors, ghosts and scrubbing (rendering.md §5.2). */
   readonly chartSession: ChartSession = new ChartSession(this);
   sim: SimClient | undefined;
+  /** A hidden change the compiler sees but the document does not (lesson faults, LES-07). */
+  compileOverlay: ((doc: CircuitDocument) => CircuitDocument) | undefined;
   private lastT: number | undefined;
   private disposers: Array<() => void> = [];
 
@@ -66,8 +75,10 @@ export class AppController {
     this.edits = createEditSystem(doc, { normalize: (d) => normalize(d, this.resolver, { labelPrefix: (t) => getDescriptor(t)?.labelPrefix }) });
     this.commands = new CommandRegistry<AppController>(() => this as AppController, isMacPlatform());
     registerBuiltinCommands(this.commands);
+    registerAnalysisCommands(this.commands);
     installFiles(this);
     this.tools = new ToolController(this.toolContext());
+    installShellFeatures(this);
 
     this.disposers.push(
       this.edits.onPatches((batch) => {
@@ -85,7 +96,7 @@ export class AppController {
       this.sim = new SimClient(
         port,
         {
-          compile: (d, prev) => compile(d, this.resolver, prev),
+          compile: (d, prev) => compile(this.compileOverlay ? this.compileOverlay(d) : d, this.resolver, prev),
           classify,
           paramChanges,
           decodeFrame,
@@ -130,10 +141,11 @@ export class AppController {
   // ------------------------------------------------------------ renderers
 
   attachSchematic(host: HTMLElement): SchematicRenderer {
-    const r = new SchematicRenderer(host, this.scheduler, elementAccess, themeFor(this.store.get().dark));
+    const r = new SchematicRenderer(host, this.scheduler, elementAccess, this.theme());
     r.addOverlay((g) => this.tools.drawOverlay(g));
     r.coarsePointer = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
     this.schematic = r;
+    for (const h of this.schematicHooks) h(r, host);
     const v = this.edits.doc.view;
     r.view.zoom = v.zoom;
     r.view.center = v.center;
@@ -151,7 +163,7 @@ export class AppController {
         }
       },
     };
-    this.chart = new ChartRenderer(host, this.scheduler, history, formatAxis, themeFor(this.store.get().dark));
+    this.chart = new ChartRenderer(host, this.scheduler, history, formatAxis, this.theme());
     this.chartSession.attach(this.chart);
     this.refreshRenderers();
     return this.chart;
@@ -174,7 +186,7 @@ export class AppController {
   }
 
   chartLanes(): ChartLane[] {
-    return buildChartLanes(this.edits.doc, (id) => this.channelId(id), themeFor(this.store.get().dark), this.chartSession.ghosts);
+    return buildChartLanes(this.edits.doc, (id) => this.channelId(id), this.theme(), this.chartSession.ghosts);
   }
 
   channelId(probeId: string): string {
@@ -296,10 +308,24 @@ export class AppController {
   }
 
   setDark(dark: boolean): void {
-    this.store.set({ dark });
-    this.schematic?.setTheme(themeFor(dark));
-    this.chart?.setTheme(themeFor(dark));
+    this.setTheme(dark ? "dark" : "light");
+  }
+
+  /** Light, dark or high contrast (ACC-11/12); `dark` stays true for both dark grounds. */
+  setTheme(name: ThemeName): void {
+    this.store.set({ theme: name, dark: name !== "light" });
+    this.schematic?.setTheme(this.theme());
+    this.chart?.setTheme(this.theme());
     this.chart?.setLanes(this.chartLanes());
+  }
+
+  /** Learner settings may adjust the theme (voltage color scale, SET-01). */
+  themeAdjust: ((t: Theme) => Theme) | undefined;
+
+  theme(): Theme {
+    const st = this.store.get();
+    const base = themeFor(st.theme ?? st.dark);
+    return this.themeAdjust ? this.themeAdjust(base) : base;
   }
 
   private toolContext(): ToolContext {

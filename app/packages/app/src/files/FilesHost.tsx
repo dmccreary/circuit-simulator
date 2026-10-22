@@ -5,10 +5,13 @@ import { useStore } from "../store";
 import { t } from "../messages";
 import { filesOf } from "./install";
 import { autosaveOf, bootFiles } from "./boot";
-import { ExamplesDialog } from "./ExamplesDialog";
+import { lazyPanel } from "../ui/lazy-panel";
 import type { FilesDialog } from "./ui-state";
 import type { FileSession } from "./session";
 import "./files.css";
+
+// Not needed at startup: its own chunk, loaded on first open.
+const ExamplesDialog = lazyPanel(() => import("./ExamplesDialog").then((m) => m.ExamplesDialog));
 
 const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
 
