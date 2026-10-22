@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "jsx": "react-jsx",
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@cs/elements/models": ["packages/elements/src/models.ts"],
+      "@cs/elements/views": ["packages/elements/src/views.ts"],
+      "@cs/*": ["packages/*/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src", "packages/*/test", "tests"]
+}

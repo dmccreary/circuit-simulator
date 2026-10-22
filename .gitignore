@@ -22,3 +22,6 @@ Thumbs.db
 .vscode/
 .idea/
 ~$*
+
+# Built simulator (run `npm --prefix app run build` before publishing)
+docs/simulator/

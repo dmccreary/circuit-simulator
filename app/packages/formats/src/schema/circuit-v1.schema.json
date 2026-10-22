@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dmccreary.github.io/circuit-simulator/schema/circuit-v1.schema.json",
+  "title": "Circuit Simulator circuit file, format version 1",
+  "description": "A .circuit.json file (design/files-and-persistence.md section 2). Values are numbers in SI base units; points are [x, y] in grid units.",
+  "type": "object",
+  "required": ["format", "formatVersion", "meta", "settings", "parts", "wires"],
+  "properties": {
+    "format": { "const": "circuit-simulator" },
+    "formatVersion": { "type": "integer", "minimum": 1 },
+    "meta": {
+      "type": "object",
+      "required": ["title", "description"],
+      "properties": { "title": { "type": "string" }, "description": { "type": "string" } }
+    },
+    "settings": {
+      "type": "object",
+      "required": ["realisticParts", "realisticRatings", "start", "seed"],
+      "properties": {
+        "realisticParts": { "type": "boolean" },
+        "realisticRatings": { "type": "boolean" },
+        "start": { "enum": ["zero", "steady"] },
+        "seed": { "type": "number" },
+        "maxTimeStep": { "type": "number", "exclusiveMinimum": 0 },
+        "integration": { "enum": ["trap", "gear2"] }
+      }
+    },
+    "parts": { "type": "array", "items": { "$ref": "#/$defs/part" } },
+    "wires": { "type": "array", "items": { "$ref": "#/$defs/wire" } },
+    "netLabels": { "type": "array", "items": { "$ref": "#/$defs/netLabel" } },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "at"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["text", "box"] },
+          "at": { "$ref": "#/$defs/point" },
+          "text": { "type": "string" },
+          "size": { "$ref": "#/$defs/point" }
+        }
+      }
+    },
+    "probes": { "type": "array", "items": { "$ref": "#/$defs/probe" } },
+    "lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["analog", "logic"] },
+          "height": { "type": "number" },
+          "yScale": {
+            "type": "object",
+            "properties": {
+              "mode": { "enum": ["auto", "fixed"] },
+              "min": { "type": "number" },
+              "max": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "mathTraces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "expression", "lane", "style"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "expression": { "type": "string" },
+          "lane": { "type": "string" },
+          "style": { "$ref": "#/$defs/traceStyle" }
+        }
+      }
+    },
+    "sliders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "part", "prop", "min", "max"],
+        "properties": {
+          "id": { "type": "string" },
+          "part": { "type": "string" },
+          "prop": { "type": "string" },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "log": { "type": "boolean" }
+        }
+      }
+    },
+    "subcircuits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "parts", "wires", "pins"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "parts": { "type": "array", "items": { "$ref": "#/$defs/part" } },
+          "wires": { "type": "array", "items": { "$ref": "#/$defs/wire" } },
+          "netLabels": { "type": "array", "items": { "$ref": "#/$defs/netLabel" } },
+          "pins": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "at", "side"],
+              "properties": {
+                "name": { "type": "string" },
+                "at": { "$ref": "#/$defs/point" },
+                "side": { "enum": ["left", "right", "top", "bottom"] }
+              }
+            }
+          },
+          "sealed": { "type": "boolean" },
+          "readOnly": { "type": "boolean" }
+        }
+      }
+    },
+    "analyses": { "type": "object" },
+    "view": {
+      "type": "object",
+      "required": ["center", "zoom"],
+      "properties": { "center": { "$ref": "#/$defs/point" }, "zoom": { "type": "number", "exclusiveMinimum": 0 } }
+    },
+    "netlist": {
+      "description": "Written for readers only: part label -> node names. Ignored when the file is opened.",
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "point": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }], "minItems": 2, "maxItems": 2 },
+    "part": {
+      "type": "object",
+      "required": ["id", "type", "label", "at"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "description": "Element type such as \"resistor\", or \"falstad:placeholder\"." },
+        "label": { "type": "string" },
+        "at": { "$ref": "#/$defs/point" },
+        "rot": { "enum": [0, 90, 180, 270] },
+        "flip": { "type": "boolean" },
+        "length": { "type": "number", "minimum": 0 },
+        "props": {
+          "type": "object",
+          "additionalProperties": { "type": ["number", "string", "boolean"] }
+        },
+        "labelOffset": { "$ref": "#/$defs/point" },
+        "locked": { "type": "boolean" },
+        "savedState": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "wire": {
+      "type": "object",
+      "required": ["id", "points"],
+      "properties": {
+        "id": { "type": "string" },
+        "points": { "type": "array", "items": { "$ref": "#/$defs/point" }, "minItems": 2 }
+      }
+    },
+    "netLabel": {
+      "type": "object",
+      "required": ["id", "name", "at"],
+      "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "at": { "$ref": "#/$defs/point" } }
+    },
+    "traceStyle": {
+      "type": "object",
+      "required": ["color", "width"],
+      "properties": {
+        "color": { "type": "string" },
+        "width": { "type": "number" },
+        "dash": { "enum": ["solid", "dashed", "dotted"] },
+        "marker": { "enum": ["none", "circle", "square"] }
+      }
+    },
+    "probeTarget": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "wire", "segment", "t"],
+          "properties": { "kind": { "const": "point" }, "wire": { "type": "string" }, "segment": { "type": "integer" }, "t": { "type": "number" } }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "part", "terminal"],
+          "properties": { "kind": { "const": "terminal" }, "part": { "type": "string" }, "terminal": { "type": "integer" } }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "part"],
+          "properties": { "kind": { "const": "across" }, "part": { "type": "string" } }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "a", "b"],
+          "properties": { "kind": { "const": "between" }, "a": { "$ref": "#/$defs/probeTarget" }, "b": { "$ref": "#/$defs/probeTarget" } }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "part", "reversed"],
+          "properties": {
+            "kind": { "const": "through" },
+            "part": { "type": "string" },
+            "terminal": { "type": "integer" },
+            "reversed": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "wire", "segment", "reversed"],
+          "properties": {
+            "kind": { "const": "segment" },
+            "wire": { "type": "string" },
+            "segment": { "type": "integer" },
+            "reversed": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "probe": {
+      "type": "object",
+      "required": ["id", "name", "quantity", "target", "lane"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "enum": ["voltage", "current", "power", "logic"] },
+        "target": { "$ref": "#/$defs/probeTarget" },
+        "lane": { "type": "string" },
+        "style": { "$ref": "#/$defs/traceStyle" },
+        "flag": {
+          "type": "object",
+          "properties": { "offset": { "$ref": "#/$defs/point" }, "showValue": { "type": "boolean" } }
+        },
+        "measurements": {
+          "type": "array",
+          "items": { "type": "object", "required": ["kind"], "properties": { "kind": { "type": "string" } } }
+        }
+      }
+    }
+  }
+}

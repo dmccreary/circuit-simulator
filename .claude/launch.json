@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "simulator-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "app", "vite", "preview", "app", "--port", "4173", "--strictPort", "--outDir", "../docs/simulator"],
+      "port": 4173
+    }
+  ]
+}
