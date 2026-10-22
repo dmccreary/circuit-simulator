@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
-const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app"];
+const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app", "xapi", "persistence"];
 
 export default defineConfig({
   resolve: {

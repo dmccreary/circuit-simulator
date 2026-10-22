@@ -25,3 +25,6 @@ Thumbs.db
 
 # Built simulator (run `npm --prefix app run build` before publishing)
 docs/simulator/
+
+# Falstad example circuits (GPL), fetched by `npm --prefix app run fetch-examples`
+app/public/circuits/

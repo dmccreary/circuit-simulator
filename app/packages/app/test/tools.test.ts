@@ -18,6 +18,7 @@ const resistor: ElementDescriptor = {
   readouts: [],
 };
 const sw: ElementDescriptor = { ...resistor, type: "switch", labelPrefix: "S", props: [{ key: "closed", unit: "", kind: "boolean", default: false }], traits: { shortWhenProp: "closed" } };
+const logicIn: ElementDescriptor = { ...resistor, type: "logic-input", labelPrefix: "IN", props: [{ key: "high", unit: "", kind: "boolean", default: false }], traits: { toggleProp: "high" } };
 
 /** A ToolContext over a plain document with a toy transaction and hit index. */
 function harness() {
@@ -63,7 +64,7 @@ function harness() {
     },
     hit: (p): HitResult[] => hits.query(view.toGrid(p), 0.4),
     view,
-    descriptor: (t) => (t === "resistor" ? resistor : t === "switch" ? sw : undefined),
+    descriptor: (t) => (t === "resistor" ? resistor : t === "switch" ? sw : t === "logic-input" ? logicIn : undefined),
     terminals: (p) => [p.at, { x: p.at.x + 4, y: p.at.y }],
     selection: () => selection,
     select: (s) => void (selection = s),
@@ -166,6 +167,18 @@ describe("ToolController", () => {
     h.controller.pointerDown(at(2, 0, { time: 1200 }));
     h.controller.pointerUp(at(2, 0, { time: 1210 }));
     expect(h.doc.parts[id].props.closed).toBe(true);
+  });
+
+  test("select: double-click toggles a logic input through toggleProp", () => {
+    const h = harness();
+    h.ctx.setTool({ id: "place", type: "logic-input" });
+    h.controller.pointerDown(at(0, 0));
+    const id = Object.keys(h.doc.parts)[0];
+    h.controller.pointerDown(at(2, 0, { time: 1000 }));
+    h.controller.pointerUp(at(2, 0, { time: 1010 }));
+    h.controller.pointerDown(at(2, 0, { time: 1200 }));
+    h.controller.pointerUp(at(2, 0, { time: 1210 }));
+    expect(h.doc.parts[id].props.high).toBe(true);
   });
 
   test("wire: drag draws an L wire; click–click also works; zero length is ignored", () => {

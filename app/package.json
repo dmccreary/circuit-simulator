@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/fetch-examples.mjs --if-missing && vite build",
+    "fetch-examples": "node scripts/fetch-examples.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p . --noEmit"
   },

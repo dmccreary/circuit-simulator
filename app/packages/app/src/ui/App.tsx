@@ -7,11 +7,19 @@ import { SchematicView } from "./SchematicView";
 import { ChartPanel } from "./ChartPanel";
 import { Inspector } from "./Inspector";
 import { isTypingTarget } from "../commands/registry";
+import { FilesHost } from "../files/FilesHost";
+import { EmbedContext, EmbedControls, usePanel, useShellClass } from "../embed/ui";
+import type { EmbedRuntime } from "../embed/runtime";
+import type { MessageRef } from "@cs/model";
+import { t } from "../messages";
 
 function Shell({ c }: { c: AppController }) {
   const dark = useApp((s) => s.dark);
   const error = useApp((s) => s.workerError);
   const diagnostics = useApp((s) => s.diagnostics);
+  // Panels the capability set grants (embed `mode`/`panels`; app-shell.md §6).
+  const shellClass = useShellClass();
+  const show = { topbar: usePanel("topbar"), palette: usePanel("palette"), chart: usePanel("chart"), inspector: usePanel("inspector"), status: usePanel("status") };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -43,27 +51,40 @@ function Shell({ c }: { c: AppController }) {
   }, [c]);
 
   return (
-    <div className="shell" data-theme={dark ? "dark" : "light"}>
-      <TopBar />
+    <div className={`shell ${shellClass}`.trim()} data-theme={dark ? "dark" : "light"}>
+      <EmbedControls />
+      {show.topbar && <TopBar />}
       <div className="main">
-        <Palette />
+        {show.palette && <Palette />}
         <div className="center">
           <SchematicView />
-          <ChartPanel />
+          {show.chart && <ChartPanel />}
         </div>
-        <Inspector />
+        {show.inspector && <Inspector />}
       </div>
-      <footer className="status" role="status">
-        {error ? <span className="error">{error}</span> : diagnostics.length ? `${diagnostics.length} warning(s)` : "Ready"}
-      </footer>
+      {show.status && (
+        <footer className="status" role="status">
+          {error ? <span className="error">{error}</span> : diagnostics.length ? statusText(diagnostics) : "Ready"}
+        </footer>
+      )}
+      <FilesHost />
     </div>
   );
 }
 
-export function App({ controller }: { controller: AppController }) {
+export function App({ controller, embed }: { controller: AppController; embed?: EmbedRuntime }) {
   return (
     <ControllerContext.Provider value={controller}>
-      <Shell c={controller} />
+      <EmbedContext.Provider value={embed ?? null}>
+        <Shell c={controller} />
+      </EmbedContext.Provider>
     </ControllerContext.Provider>
   );
+}
+
+/** The most severe diagnostic's text, plus how many more there are. */
+function statusText(list: readonly { severity: string; message: MessageRef }[]): string {
+  const rank = { error: 0, warning: 1, info: 2 } as Record<string, number>;
+  const first = [...list].sort((a, b) => (rank[a.severity] ?? 3) - (rank[b.severity] ?? 3))[0];
+  return list.length > 1 ? `${t(first.message)} (+${list.length - 1} more)` : t(first.message);
 }

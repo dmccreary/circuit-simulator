@@ -17,6 +17,11 @@ export class Junction {
     this.vcrit = this.nvt * log(this.nvt / (Math.SQRT2 * this.is));
   }
 
+  /** SPICE's Vcrit: where the curve turns sharply; a good first Newton guess for an "on" junction. */
+  criticalVoltage(): number {
+    return this.vcrit;
+  }
+
   current(v: number): number {
     const arg = v / this.nvt;
     if (arg > ARG_MAX) return this.is * (exp(ARG_MAX) * (1 + arg - ARG_MAX) - 1);

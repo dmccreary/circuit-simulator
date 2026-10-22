@@ -27,6 +27,8 @@ const TWO_PI = 6.283185307179586;
 /** Modes slower than this are floating nodes held only by gmin; ignore them. */
 const MAX_TAU = 1e5;
 const MIN_TAU = 1e-15;
+/** Eigenvalues this far below the largest are rounding noise, not real fast modes. */
+const REL_NOISE = 1e-9;
 
 export function sourcePeriods(c: Circuit): number[] {
   // The contract has no "period" query, so read the conventional prop names.
@@ -93,12 +95,15 @@ export function naturalTimeScales(c: Circuit, x: Float64Array, t: number): numbe
   const eig = eigenvalues(K, k);
   if (!eig) return [];
   const out: number[] = [];
+  let largest = 0;
+  for (let i = 0; i < k; i++) largest = Math.max(largest, Math.sqrt(eig.re[i] * eig.re[i] + eig.im[i] * eig.im[i]));
+  const floor = Math.max(MIN_TAU, REL_NOISE * largest);
   for (let i = 0; i < k; i++) {
     const re = eig.re[i];
     const im = eig.im[i];
     const mag2 = re * re + im * im;
     const mag = Math.sqrt(mag2);
-    if (!(mag > MIN_TAU)) continue;
+    if (!(mag > floor)) continue;
     // s = -1/mu
     const sRe = Math.abs(re / mag2);
     const sIm = Math.abs(im / mag2);

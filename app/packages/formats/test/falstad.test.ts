@@ -72,7 +72,7 @@ describe("Falstad mapper", () => {
     expect(byType(doc, "switch")[0].props.closed).toBe(false);
 
     expect(Object.values(doc.wires).map((w) => w.points)).toEqual([[{ x: 11, y: 5 }, { x: 11, y: 22 }]]);
-    expect(doc.settings.maxTimeStep).toBe(5e-6);
+    expect(doc.settings.maxTimeStep).toBeUndefined();
 
     const sliders = Object.values(doc.sliders);
     expect(sliders.map((s) => [doc.parts[s.part].label, s.prop])).toEqual([

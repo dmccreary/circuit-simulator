@@ -4,6 +4,7 @@ import { useApp, useController } from "./context";
 import { useLiveValue } from "../live";
 import { t } from "../messages";
 import type { ToolSpec } from "../app-state";
+import { FileMenu } from "../files/FileMenu";
 
 const SPEEDS: { value: number | "fit"; label: string }[] = [
   { value: 1e-6, label: "1 µs / s" },
@@ -38,6 +39,7 @@ export function TopBar() {
 
   return (
     <header className="topbar" role="toolbar" aria-label="Simulation">
+      <FileMenu />
       <Button className="btn primary" onPress={run("sim.runPause")} aria-keyshortcuts="Space">
         {running ? `⏸ ${t("cmd.pause")}` : `▶ ${t("cmd.run")}`}
       </Button>
@@ -66,14 +68,19 @@ export function TopBar() {
         </select>
       </label>
       <span className="sep" />
-      <Button className="btn" onPress={run("edit.undo")} isDisabled={!canUndo} aria-label={t("cmd.undo")}>
-        ↶
-      </Button>
-      <Button className="btn" onPress={run("edit.redo")} isDisabled={!canRedo} aria-label={t("cmd.redo")}>
-        ↷
-      </Button>
+      {c.commands.allowed("edit.undo") && (
+        <>
+          <Button className="btn" onPress={run("edit.undo")} isDisabled={!canUndo} aria-label={t("cmd.undo")}>
+            ↶
+          </Button>
+          <Button className="btn" onPress={run("edit.redo")} isDisabled={!canRedo} aria-label={t("cmd.redo")}>
+            ↷
+          </Button>
+        </>
+      )}
       <span className="sep" />
-      {TOOLS.map((tl) => (
+      {/* Tool labels are also their command ids, so the capability gate hides tools a mode lacks. */}
+      {TOOLS.filter((tl) => c.commands.allowed(tl.label)).map((tl) => (
         <ToggleButton
           key={tl.spec.id}
           className="btn tool"

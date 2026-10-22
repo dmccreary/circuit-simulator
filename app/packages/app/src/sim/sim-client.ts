@@ -10,6 +10,12 @@ export interface WorkerPort {
 
 export type ChangeKind = "none" | "params" | "topology";
 
+/** A historical display state from the worker's state ring. */
+export interface StateAt {
+  t: number;
+  display: Float64Array;
+}
+
 /** The model and worker functions the client needs, injected so it can be tested without a worker. */
 export interface SimDeps {
   compile(doc: CircuitDocument, previous?: CompiledCircuit): CompiledCircuit;
@@ -36,6 +42,8 @@ const sameChannels = (a: ChannelSpec[], b: ChannelSpec[]) => JSON.stringify(a) =
 export class SimClient {
   compiled: CompiledCircuit | undefined;
   private channels: ChannelSpec[] = [];
+  private nextRequest = 1;
+  private pendingState = new Map<number, (r: StateAt | null) => void>();
 
   constructor(
     private port: WorkerPort,
@@ -92,7 +100,26 @@ export class SimClient {
     }
   }
 
+  /**
+   * The display state at simulated time t, for scrubbing (CHT-22). Resolves
+   * null when t is older than the worker's state ring (CHT-23).
+   */
+  getStateAt(t: number): Promise<StateAt | null> {
+    const requestId = this.nextRequest++;
+    return new Promise((resolve) => {
+      this.pendingState.set(requestId, resolve);
+      this.send({ type: "getStateAt", t, requestId });
+    });
+  }
+
+  /** Restore the state at t and continue from there (Restart from here, CHT-22). */
+  restartFrom(t: number): void {
+    this.send({ type: "restartFrom", t });
+  }
+
   dispose(): void {
+    for (const r of this.pendingState.values()) r(null);
+    this.pendingState.clear();
     this.port.onmessage = null;
     this.port.terminate?.();
   }
@@ -115,6 +142,12 @@ export class SimClient {
 
   private receive(m: WorkerMessage): void {
     this.on.message?.(m);
+    if (m.type === "stateAt") {
+      const r = this.pendingState.get(m.requestId);
+      this.pendingState.delete(m.requestId);
+      r?.(m.display ? { t: m.t, display: Float64Array.from(m.display) } : null);
+      return;
+    }
     if (m.type !== "frame") return;
     let f: Frame;
     try {

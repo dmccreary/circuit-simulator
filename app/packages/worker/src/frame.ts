@@ -4,7 +4,9 @@
 //   times    Float64Array[n]
 //   samples  Float64Array[n * k]   channel-major
 //   display  Float64Array[displayLen]
-//   discrete Uint8Array[discreteLen] (reserved: switch/logic/failure flags; empty for now)
+//   discrete Uint8Array[discreteLen] logic state per node (index = NodeIndex):
+//            0 low, 1 high, 2 X, 3 Z, 255 analog; empty without logic parts.
+//            Read with decodeDiscrete() (Frame has no field for it yet).
 //   tail     UTF-8 JSON { channelIds, events }
 //
 // The Float64 blocks are platform-endian typed-array views (little-endian on
@@ -20,12 +22,12 @@ const RUN_STATES: RunState[] = ["paused", "running", "stepping", "stopped"];
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export function encodeFrame(f: Frame): ArrayBuffer {
+export function encodeFrame(f: Frame, discrete: Uint8Array = new Uint8Array(0)): ArrayBuffer {
   const n = f.times.length;
   const k = f.channelIds.length;
   if (f.samples.length !== n * k) throw new Error(`frame samples: expected ${n * k}, got ${f.samples.length}`);
   const tail = encoder.encode(JSON.stringify({ channelIds: f.channelIds, events: f.events }));
-  const discreteLen = 0;
+  const discreteLen = discrete.length;
   const f64Bytes = 8 * (n + n * k + f.display.length);
   const buf = new ArrayBuffer(HEADER + f64Bytes + discreteLen + tail.length);
   const dv = new DataView(buf);
@@ -48,7 +50,9 @@ export function encodeFrame(f: Frame): ArrayBuffer {
   new Float64Array(buf, off, n * k).set(f.samples);
   off += 8 * n * k;
   new Float64Array(buf, off, f.display.length).set(f.display);
-  off += 8 * f.display.length + discreteLen;
+  off += 8 * f.display.length;
+  new Uint8Array(buf, off, discreteLen).set(discrete);
+  off += discreteLen;
   new Uint8Array(buf, off, tail.length).set(tail);
   return buf;
 }
@@ -89,4 +93,15 @@ export function decodeFrame(buf: ArrayBuffer): Frame {
     display,
     events: tail.events,
   };
+}
+
+/** The discrete block of an encoded frame: logic state per node (see the layout above). */
+export function decodeDiscrete(buf: ArrayBuffer): Uint8Array {
+  const dv = new DataView(buf);
+  if (dv.getUint32(0, true) !== MAGIC) throw new Error("not a simulator frame");
+  const n = dv.getUint32(12, true);
+  const k = dv.getUint32(16, true);
+  const displayLen = dv.getUint32(20, true);
+  const discreteLen = dv.getUint32(56, true);
+  return new Uint8Array(buf, HEADER + 8 * (n + n * k + displayLen), discreteLen);
 }

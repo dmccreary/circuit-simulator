@@ -2,7 +2,7 @@
 // the bookkeeping needed for display state and diagnostics.
 
 import { terminalCurrentOffsets, type Netlist } from "@cs/model";
-import type { ElementModel, ModelFactory, SolutionView } from "@cs/elements";
+import type { ElementModel, ModelFactory, SolutionView, Stamper } from "@cs/elements";
 
 export type FactoryLookup = (type: string) => ModelFactory | undefined;
 
@@ -25,6 +25,15 @@ export interface Circuit {
   idIndex: Map<string, number>;
   /** Nodes no modelled terminal touches (a dangling wire); held to ground by gmin. */
   idleNodes: number[];
+  /** Digital kernel hooks (§4), set by the engine when the circuit has logic parts. */
+  digital?: {
+    /** Bridge stamps, added to every per-step assembly. */
+    stamp(s: Stamper): void;
+    /** Adds bridge currents to the display's terminal-current block. */
+    addBridgeCurrents(x: Float64Array, out: Float64Array): void;
+    /** Logic channel value of a node (see digital/types.ts logicSample). */
+    logicOf(node: number, display: Float64Array): number;
+  };
 }
 
 export function buildCircuit(netlist: Netlist, lookup: FactoryLookup): Circuit {
@@ -114,4 +123,5 @@ export function fillDisplay(c: Circuit, x: Float64Array, out: Float64Array): voi
     if (m) m.terminalCurrents(view, sub);
     else sub.fill(0);
   });
+  c.digital?.addBridgeCurrents(x, out);
 }

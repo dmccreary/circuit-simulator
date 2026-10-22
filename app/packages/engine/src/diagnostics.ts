@@ -48,3 +48,14 @@ export function stepTooLargeDiagnostic(maxStep: number, limit: number): Diagnost
     elements: [],
   };
 }
+
+/** Zero-delay feedback that never settles (an inverter ring with no delay). */
+export function digitalOscillationDiagnostic(elements: string[], t: number): Diagnostic {
+  return {
+    id: "digital-oscillation",
+    severity: "error",
+    message: { key: "engine.digitalOscillation", values: { t } },
+    elements,
+    simTime: t,
+  };
+}

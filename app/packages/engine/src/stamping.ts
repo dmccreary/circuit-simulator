@@ -12,6 +12,7 @@ export function stampStatic(c: Circuit, sys: MnaSystem): void {
 export function stampStep(c: Circuit, sys: MnaSystem, step: StepInfo, x: SolutionView | null, nodeShunt: number): void {
   sys.begin();
   for (const m of c.models) m?.stampStep?.(sys, step);
+  c.digital?.stamp(sys);
   if (x && c.nonlinear) for (const m of c.models) if (m?.nonlinear) m.stampNewton?.(sys, x, step);
   sys.addNodeShunt(c.nodeCount, nodeShunt);
   for (const n of c.idleNodes) sys.matrix(n, n, 1e-12);

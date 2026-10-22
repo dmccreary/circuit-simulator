@@ -64,6 +64,7 @@ nav:
   - MicroSims:
       - List of MicroSims: sims/index.md
       - Circuit Simulator Architecture: sims/simulator-architecture/index.md
+      - Embedding the Simulator: sims/simulator-embed-demo/index.md
 
   - License: license.md
   - Contact: contact.md
@@ -140,9 +141,10 @@ markdown_extensions:
 extra_css:
   - css/extra.css
 
-# Custom JavaScript — uncomment once a corresponding file exists
-# extra_javascript:
-#   - js/extra.js
+# Custom JavaScript
+# js/circuit-embed.js turns <div class="circuit-embed"> into simulator iframes.
+extra_javascript:
+  - js/circuit-embed.js
 
 # Exclude prompt scratch files and TODOs from build/search/sitemap
 exclude_docs: |

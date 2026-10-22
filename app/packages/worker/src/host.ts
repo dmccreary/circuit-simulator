@@ -336,7 +336,7 @@ export class EngineHost {
       display: e.displayState(),
       events: this.pendEvents,
     };
-    const buffer = encodeFrame(frame);
+    const buffer = encodeFrame(frame, e.logicStates());
     this.deps.post({ type: "frame", buffer }, [buffer]);
     this.lastFrameTime = now;
     this.pendT0 = e.time;

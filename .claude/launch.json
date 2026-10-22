@@ -4,8 +4,31 @@
     {
       "name": "simulator-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--prefix", "app", "vite", "preview", "app", "--port", "4173", "--strictPort", "--outDir", "../docs/simulator"],
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "vite",
+        "preview",
+        "app",
+        "--port",
+        "4173",
+        "--strictPort",
+        "--outDir",
+        "../docs/simulator"
+      ],
       "port": 4173
+    },
+    {
+      "name": "site-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "-d",
+        "site"
+      ],
+      "port": 8765
     }
   ]
 }

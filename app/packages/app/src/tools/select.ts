@@ -89,7 +89,8 @@ export class SelectTool implements Tool {
   /** Flip a switch-like part's boolean prop. Returns false if the part has none. */
   private toggle(partId: string, ctx: ToolContext): boolean {
     const part = ctx.doc.parts[partId];
-    const key = part && ctx.descriptor(part.type)?.traits?.shortWhenProp;
+    const traits = part && ctx.descriptor(part.type)?.traits;
+    const key = traits?.toggleProp ?? traits?.shortWhenProp;
     if (!key) return false;
     const tx = ctx.begin({ key: "edit.toggle" });
     tx.update((d) => {

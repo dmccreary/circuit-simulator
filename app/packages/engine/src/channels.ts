@@ -6,6 +6,9 @@ import type { Circuit } from "./circuit";
 
 type Evaluator = (d: Float64Array) => number;
 
+/** Logic threshold for nodes with no digital pins, volts. */
+const ANALOG_LOGIC_THRESHOLD = 2.5;
+
 function evaluator(spec: ChannelSpec, c: Circuit): Evaluator {
   const nodeOk = (n: number) => Number.isInteger(n) && n >= 0 && n <= c.nodeCount;
   const curBase = c.nodeCount + 1;
@@ -35,10 +38,12 @@ function evaluator(spec: ChannelSpec, c: Circuit): Evaluator {
       };
     }
     case "logic": {
-      // TODO(digital kernel): report the net's logic state; until then, its voltage.
+      // Logic state: 0, 1, 0.5 for X, NaN for Z (digital/types.ts logicSample).
       const n = spec.node;
       if (!nodeOk(n)) return () => NaN;
-      return (d) => d[n];
+      const dig = c.digital;
+      if (dig) return (d) => dig.logicOf(n, d);
+      return (d) => (d[n] >= ANALOG_LOGIC_THRESHOLD ? 1 : 0);
     }
   }
 }

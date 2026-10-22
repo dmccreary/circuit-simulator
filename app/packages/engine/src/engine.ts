@@ -1,9 +1,12 @@
 // Transient engine (simulation-engine.md §2, §8): MNA + trapezoidal rule with
 // backward-Euler restarts, adaptive steps, Newton–Raphson, DC operating point.
 //
-// TODO(digital kernel, §4): event queue, bridges, and delta cycles. The seam is
-// step(): digital events will become breakpoints, and evaluateDigital() calls
-// happen between analog steps.
+// Mixed signal (§4): the digital kernel (digital/kernel.ts) runs between
+// analog steps. Its next event bounds every analog step, A→D threshold
+// crossings shorten a step to land just past them, and after each accepted
+// step the kernel processes the events due then; if a bridge changed, the
+// analog solution is re-solved at the same instant. A circuit with no analog
+// parts advances event to event without solving a matrix.
 
 import type { ChannelSpec, Diagnostic, ElementId, IdentityMap, Netlist, PropValue } from "@cs/model";
 import type { StepInfo } from "@cs/elements";
@@ -19,7 +22,8 @@ import {
   type Circuit,
   type FactoryLookup,
 } from "./circuit";
-import { noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
+import { digitalOscillationDiagnostic, noConvergenceDiagnostic, singularDiagnostic, stepTooLargeDiagnostic } from "./diagnostics";
+import { DigitalKernel, DigitalOscillation, type DigitalSnapshot } from "./digital/kernel";
 import { HistoryRing } from "./history";
 import { DenseLU, SingularError, type LinearSolver } from "./solver";
 import { stampStatic, stampStep } from "./stamping";
@@ -47,6 +51,8 @@ const GMIN = 1e-12;
 const MAX_HALVINGS = 8; // SIM-16
 const MAX_LTE_REJECTS = 30;
 const MAX_CROSSING_REFINES = 4;
+/** Digital/analog round trips at one instant before giving up (bridges fighting a threshold). */
+const MAX_SYNC_PASSES = 50;
 
 interface Checkpoint {
   t: number;
@@ -54,6 +60,7 @@ interface Checkpoint {
   states: Float64Array;
   dtNext: number;
   beLeft: number;
+  digital: DigitalSnapshot | null;
 }
 
 function cloneNetlist(n: Netlist): Netlist {
@@ -98,6 +105,7 @@ class EngineImpl implements Engine {
   private ring!: HistoryRing;
   private checkpoints: Checkpoint[] = [];
   private sinceCheckpoint = 0;
+  private dig: DigitalKernel | null = null;
 
   constructor(netlist: Netlist, private readonly lookup: FactoryLookup, opts: EngineOptions) {
     this.o = { ...DEFAULTS, ...opts } as Resolved;
@@ -151,13 +159,17 @@ class EngineImpl implements Engine {
     return this.ring.stateAt(t);
   }
 
+  logicStates(): Uint8Array {
+    return this.dig ? this.dig.logicStates(this.display) : new Uint8Array(0);
+  }
+
   step(): StepOutcome {
     if (this.status === "stopped") return { ok: false, t: this.time, dt: 0, breakpoint: false };
     try {
-      return this.transientStep();
+      return this.dig?.pure ? this.digitalStep() : this.transientStep();
     } catch (e) {
-      if (e instanceof SingularError) {
-        this.stop(singularDiagnostic(this.c, e.row, this.time));
+      if (e instanceof SingularError || e instanceof SolveFailure || e instanceof DigitalOscillation) {
+        this.handleSolveError(e);
         return { ok: false, t: this.time, dt: 0, breakpoint: false };
       }
       throw e;
@@ -175,7 +187,10 @@ class EngineImpl implements Engine {
       this.events.push({ t: this.time, kind: "paramChanged", element: ch.element, detail: ch.param });
     }
     if (touched.size === 0) return;
-    for (const [i, props] of touched) this.c.models[i]?.setProps(props);
+    for (const [i, props] of touched) {
+      this.c.models[i]?.setProps(props);
+      this.dig?.markElement(i);
+    }
     stampStatic(this.c, this.sys);
     this.afterEdit();
   }
@@ -184,6 +199,7 @@ class EngineImpl implements Engine {
     const old = this.c;
     const oldStates = saveAllStates(old);
     const oldX = this.x;
+    const oldDig = this.dig;
     this.netlist = cloneNetlist(netlist);
     this.build();
     const c = this.c;
@@ -198,6 +214,7 @@ class EngineImpl implements Engine {
       if (oi === undefined || !om || om.stateSize !== m.stateSize) return;
       m.loadState(oldStates.slice(old.stateOffsets[oi], old.stateOffsets[oi + 1]));
     });
+    if (this.dig && oldDig) this.dig.carryOver(oldDig, (id) => newToOld.get(id) ?? (identity[id] === undefined ? id : undefined));
     // Seed the solution with old node voltages by name so Newton starts close.
     const oldByName = new Map<string, number>();
     old.netlist.nodeNames.forEach((name, i) => i > 0 && i <= old.nodeCount && oldByName.set(name, oldX[i]));
@@ -259,6 +276,8 @@ class EngineImpl implements Engine {
 
   private build(): void {
     this.c = buildCircuit(this.netlist, this.lookup);
+    this.dig = DigitalKernel.create(this.c);
+    if (this.dig) this.c.digital = this.dig;
     this.sys = new MnaSystem(this.c.size);
     this.solver = this.o.solverFactory();
     this.solver.analyze({ size: this.c.size });
@@ -296,10 +315,11 @@ class EngineImpl implements Engine {
     this.dtNext = this.stepLimit() / 4;
     this.beLeft = this.o.beSteps;
     try {
-      if (start === "steady") {
-        const x = this.dcOperatingPoint();
+      if (start === "steady" && !this.dig?.pure) {
+        let x = this.dcOperatingPoint();
         if (!x) throw new SolveFailure();
         this.acceptAll(x, this.info("dc", 0, GMIN, 1));
+        if (this.dig) x = this.syncDigital(x);
         this.commitSolution(x);
         this.refreshTimeScales();
       } else {
@@ -419,13 +439,37 @@ class EngineImpl implements Engine {
    * voltage sources and inductors as current sources. Used at t = 0 and after edits.
    */
   private settle(): void {
+    let x = this.solveHere();
+    if (this.dig) x = this.syncDigital(x);
+    this.commitSolution(x);
+  }
+
+  /** The settle solve without committing: the solution at this.time with states held. */
+  private solveHere(): Float64Array {
+    if (this.dig?.pure) return this.dig.levelsVector(this.c.size);
     const ts = this.timeScales;
     const dt0 = 1e-9 * (ts.kind === "static" ? this.o.staticMaxStep : ts.fastest);
     const step: StepInfo = { kind: "transient", t: this.time, dt: dt0, method: "be", gmin: GMIN, sourceScale: 1 };
     const x = this.solveAt(step, this.x, 0, this.o.maxNewtonIterations * 2);
     if (!x) throw new SolveFailure();
     this.acceptAll(x, step);
-    this.commitSolution(x);
+    return x;
+  }
+
+  /**
+   * Bring the digital side up to date at this.time (§4 synchronization):
+   * sense A→D inputs from x, run due events in delta cycles, and re-solve the
+   * analog side while bridges keep changing. Returns x itself when nothing
+   * changed, else the new solution (not yet committed).
+   */
+  private syncDigital(x: Float64Array): Float64Array {
+    const dig = this.dig!;
+    for (let pass = 0; pass < MAX_SYNC_PASSES; pass++) {
+      dig.senseAll(x);
+      if (!dig.run(this.time)) return x;
+      x = this.solveHere();
+    }
+    throw new DigitalOscillation([], this.time);
   }
 
   private acceptAll(x: Float64Array, step: StepInfo): void {
@@ -449,6 +493,7 @@ class EngineImpl implements Engine {
   private handleSolveError(e: unknown): void {
     if (e instanceof SingularError) this.stop(singularDiagnostic(this.c, e.row, this.time));
     else if (e instanceof SolveFailure) this.stop(noConvergenceDiagnostic(this.c, this.time));
+    else if (e instanceof DigitalOscillation) this.stop(digitalOscillationDiagnostic(e.elements, e.t));
     else throw e;
   }
 
@@ -529,6 +574,13 @@ class EngineImpl implements Engine {
           dt = b - this.time;
           hitBp = true;
         }
+      // Analog steps stop at the next digital event (§4).
+      const te = this.dig?.nextTime();
+      let hitDig = false;
+      if (te !== undefined && te > this.time && te <= this.time + dt) {
+        dt = te - this.time;
+        hitDig = true;
+      }
 
       const method = this.beLeft > 0 ? "be" : "trap"; // TODO: gear2 option
       const step = this.info("transient", dt, GMIN, 1, method);
@@ -550,6 +602,17 @@ class EngineImpl implements Engine {
         dt = Math.max(dtMin, dt * Math.max(0.1, 0.9 * pow(ratio, -1 / 3)));
         proposal = dt;
         continue;
+      }
+
+      // Land just past the first A→D threshold crossing (§4, via §2.3).
+      if (this.dig && refines < MAX_CROSSING_REFINES && dt > dtMin) {
+        const frac = this.dig.crossingFraction(this.x, x);
+        if (frac < 1 && (1 - frac) * dt > 1e-6 * dt) {
+          refines++;
+          refined = true;
+          dt = Math.max(dtMin, dt * Math.min(1, frac + 1e-6));
+          continue;
+        }
       }
 
       const snapshot = this.pauseEnabled && this.pauseConds.length > 0 ? saveAllStates(c) : null;
@@ -576,8 +639,18 @@ class EngineImpl implements Engine {
       this.ring.push(this.time, display);
       this.recordSample();
       const grow = ratio > 0 ? Math.min(2, 0.9 * pow(ratio, -1 / 3)) : 2;
-      this.dtNext = hitBp || refined ? Math.min(proposal, limit) : Math.min(dt * grow, limit);
+      this.dtNext = hitBp || hitDig || refined ? Math.min(proposal, limit) : Math.min(dt * grow, limit);
       this.beLeft = hitBp ? this.o.beSteps : Math.max(0, this.beLeft - 1);
+      if (this.dig) {
+        // Events due now; a changed bridge is a discontinuity, so restart with BE.
+        const x2 = this.syncDigital(x);
+        if (x2 !== x) {
+          this.commitSolution(x2);
+          this.beLeft = this.o.beSteps;
+          hitBp = true;
+        }
+        hitBp ||= hitDig;
+      }
       if (++this.sinceCheckpoint >= this.o.checkpointInterval) this.pushCheckpoint();
       let pause: PauseCondition | undefined;
       if (hit) {
@@ -639,6 +712,24 @@ class EngineImpl implements Engine {
     return best;
   }
 
+  /** A purely digital circuit: jump to the next event, no matrix (§4). */
+  private digitalStep(): StepOutcome {
+    const dig = this.dig!;
+    const limit = this.stepLimit();
+    const te = dig.nextTime();
+    const hit = te !== undefined && te > this.time; // idle: advance by the step limit
+    const t0 = this.time;
+    this.time = hit ? te! : t0 + limit;
+    const before = this.channelValues.slice();
+    this.commitSolution(this.x); // the old levels at the new time: edges stay vertical
+    const x = this.syncDigital(this.x);
+    if (x !== this.x) this.commitSolution(x);
+    if (++this.sinceCheckpoint >= this.o.checkpointInterval) this.pushCheckpoint();
+    const cross = this.pauseEnabled && this.pauseConds.length > 0 ? this.crossing(before, this.channelValues) : null;
+    if (cross) this.events.push({ t: this.time, kind: "pauseCondition", detail: cross.cond.id });
+    return { ok: true, t: this.time, dt: this.time - t0, breakpoint: hit, pause: cross?.cond };
+  }
+
   // ------------------------------------------------------------ checkpoints
 
   private snapshot(): Checkpoint {
@@ -648,6 +739,7 @@ class EngineImpl implements Engine {
       states: saveAllStates(this.c),
       dtNext: this.dtNext,
       beLeft: this.beLeft,
+      digital: this.dig ? this.dig.save() : null,
     };
   }
 
@@ -657,6 +749,7 @@ class EngineImpl implements Engine {
     this.x = cp.x.slice();
     this.dtNext = cp.dtNext;
     this.beLeft = cp.beLeft;
+    if (this.dig && cp.digital) this.dig.restore(cp.digital);
     fillDisplay(this.c, this.x, this.display);
     this.channels.evaluate(this.display, this.channelValues);
   }

@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
-const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app"];
+const pkgs = ["units", "dmath", "model", "elements", "engine", "worker", "formats", "history", "render", "app", "xapi", "persistence"];
 
 // Same @cs/* aliases as vitest.config.ts, including the elements subpaths.
 export default defineConfig({

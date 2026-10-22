@@ -65,6 +65,8 @@ export interface ElementDescriptor {
     voltmeter?: boolean;
     /** Name of a boolean prop; when true, terminals 0 and 1 are shorted (closed switch). */
     shortWhenProp?: string;
+    /** Boolean prop flipped by clicking the part while running (logic input). Defaults to shortWhenProp. */
+    toggleProp?: string;
   };
 }
 

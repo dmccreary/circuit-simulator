@@ -2,6 +2,7 @@ import type { PartResolver, PartTraits, PropValue } from "@cs/model";
 import { getDescriptor } from "./descriptors";
 import { terminalPositions } from "./geometry";
 import { isIdealShort } from "./shared/switchState";
+import { digitalPinsOf } from "./logic/pins";
 
 const SWITCH_TYPES = new Set(["switch", "push-button"]);
 
@@ -15,6 +16,8 @@ function traitsFor(type: string): PartTraits {
   if (t.currentSource) out.currentSource = true;
   if (t.ammeter) out.ammeter = true;
   if (t.voltmeter) out.voltmeter = true;
+  const digitalPins = digitalPinsOf(type);
+  if (digitalPins) out.digitalPins = digitalPins;
   if (SWITCH_TYPES.has(type)) {
     out.shorts = (props: Record<string, PropValue>) => (isIdealShort(type, props) ? [[0, 1]] : []);
   } else if (t.shortWhenProp) {

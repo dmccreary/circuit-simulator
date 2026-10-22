@@ -93,14 +93,16 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
       };
       report.unsupported.push({ line: el.line, code: el.code, raw: el.raw, partId: id });
     }
-    const geom = placement(spec.reversed ? p2 : p1, spec.reversed ? p1 : p2);
+    const from = spec.place ? g(...spec.place.at) : spec.reversed ? p2 : p1;
+    const toward = spec.place ? g(...spec.place.toward) : spec.reversed ? p1 : p2;
+    const geom = placement(from, toward);
     if (geom.diagonal) report.warnings.push({ line: el.line, message: { key: "falstad.diagonal", values: { part: id } } });
     const part: Part = {
       id,
       type: spec.type,
       label: nextLabel(spec.type),
-      at: spec.reversed ? p2 : p1,
-      orientation: { rot: geom.rot, flip: false },
+      at: from,
+      orientation: { rot: geom.rot, flip: spec.place?.flip ?? false },
       props: spec.props,
     };
     if (spec.fixedLength !== undefined) {
@@ -126,7 +128,8 @@ export function mapFalstadCircuit(fc: FalstadCircuit, title = ""): { doc: Circui
     .map((h) => HINTS[h.type].replace("{a}", labelOf(h.item1)).replace("{b}", labelOf(h.item2)));
   doc.meta.description = hintLines.join("\n");
 
-  if (fc.settings && fc.settings.timeStep > 0) doc.settings.maxTimeStep = fc.settings.timeStep;
+  // Falstad's time step belongs to its fixed-step method; ours is chosen automatically
+  // (SIM-07), so the value stays in report.settings and is not imported as a limit.
   doc.view.center = centerOf(doc);
   return { doc, report };
 }

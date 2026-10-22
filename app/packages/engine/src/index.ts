@@ -8,3 +8,4 @@ export { MnaSystem } from "./assembly";
 export { HistoryRing } from "./history";
 export { eigenvalues } from "./eigen";
 export type { FactoryLookup } from "./circuit";
+export { DISCRETE_ANALOG, logicSample } from "./digital/types";

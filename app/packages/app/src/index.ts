@@ -7,3 +7,4 @@ export { ToolController, createTool } from "./tools/controller";
 export { FrameBus } from "./frame-bus";
 export { useLiveValue, channelValue } from "./live";
 export { createAppStore, type AppState, type ToolSpec } from "./app-state";
+export { filesOf, type FileSession } from "./files";

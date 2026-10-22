@@ -17,6 +17,13 @@ import { resistorView } from "./resistor/view";
 import { squareSourceView } from "./square-source/view";
 import { switchView } from "./switch/view";
 import { voltmeterView } from "./voltmeter/view";
+import { npnView, pnpView } from "./bjt/view";
+import { nMosfetView, pMosfetView } from "./mosfet/view";
+import { opAmpView } from "./op-amp/view";
+import { zenerDiodeView } from "./zener-diode/view";
+import { cccsView, ccvsView, vccsView, vcvsView } from "./controlled-source/view";
+import { transformerView } from "./transformer/view";
+import { LOGIC_VIEWS } from "./logic/registry-views";
 
 const VIEWS: Record<string, ElementView> = {
   ground: groundView,
@@ -36,6 +43,18 @@ const VIEWS: Record<string, ElementView> = {
   lamp: lampView,
   ammeter: ammeterView,
   voltmeter: voltmeterView,
+  vcvs: vcvsView,
+  vccs: vccsView,
+  ccvs: ccvsView,
+  cccs: cccsView,
+  transformer: transformerView,
+  "zener-diode": zenerDiodeView,
+  "npn-transistor": npnView,
+  "pnp-transistor": pnpView,
+  "n-mosfet": nMosfetView,
+  "p-mosfet": pMosfetView,
+  "op-amp": opAmpView,
+  ...LOGIC_VIEWS,
 };
 
 export function getView(type: string): ElementView | undefined {

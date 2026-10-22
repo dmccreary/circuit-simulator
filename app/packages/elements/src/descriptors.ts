@@ -16,6 +16,13 @@ import { resistorDescriptor } from "./resistor/descriptor";
 import { squareSourceDescriptor } from "./square-source/descriptor";
 import { switchDescriptor } from "./switch/descriptor";
 import { voltmeterDescriptor } from "./voltmeter/descriptor";
+import { npnDescriptor, pnpDescriptor } from "./bjt/descriptor";
+import { nMosfetDescriptor, pMosfetDescriptor } from "./mosfet/descriptor";
+import { opAmpDescriptor } from "./op-amp/descriptor";
+import { zenerDiodeDescriptor } from "./zener-diode/descriptor";
+import { cccsDescriptor, ccvsDescriptor, vccsDescriptor, vcvsDescriptor } from "./controlled-source/descriptor";
+import { transformerDescriptor } from "./transformer/descriptor";
+import { LOGIC_DESCRIPTORS } from "./logic/registry";
 
 /** In palette order (CMP-02 Essentials order). */
 export const DESCRIPTORS: readonly ElementDescriptor[] = [
@@ -36,6 +43,20 @@ export const DESCRIPTORS: readonly ElementDescriptor[] = [
   ammeterDescriptor,
   squareSourceDescriptor,
   currentSourceDescriptor,
+  // Analog parts beyond Essentials.
+  vcvsDescriptor,
+  vccsDescriptor,
+  ccvsDescriptor,
+  cccsDescriptor,
+  transformerDescriptor,
+  zenerDiodeDescriptor,
+  npnDescriptor,
+  pnpDescriptor,
+  nMosfetDescriptor,
+  pMosfetDescriptor,
+  opAmpDescriptor,
+  // Logic.
+  ...LOGIC_DESCRIPTORS,
 ];
 
 const BY_TYPE = new Map(DESCRIPTORS.map((d) => [d.type, d]));

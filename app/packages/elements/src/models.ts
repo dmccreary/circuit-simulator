@@ -16,6 +16,13 @@ import { resistorModel } from "./resistor/model";
 import { squareSourceModel } from "./square-source/model";
 import { switchModel } from "./switch/model";
 import { voltmeterModel } from "./voltmeter/model";
+import { npnModel, pnpModel } from "./bjt/model";
+import { nMosfetModel, pMosfetModel } from "./mosfet/model";
+import { opAmpModel } from "./op-amp/model";
+import { zenerDiodeModel } from "./zener-diode/model";
+import { cccsModel, ccvsModel, vccsModel, vcvsModel } from "./controlled-source/model";
+import { transformerModel } from "./transformer/model";
+import { LOGIC_MODELS } from "./logic/registry-models";
 
 // "ground" has no model: it only names its net.
 const FACTORIES: Record<string, ModelFactory> = {
@@ -35,6 +42,18 @@ const FACTORIES: Record<string, ModelFactory> = {
   lamp: lampModel,
   ammeter: ammeterModel,
   voltmeter: voltmeterModel,
+  vcvs: vcvsModel,
+  vccs: vccsModel,
+  ccvs: ccvsModel,
+  cccs: cccsModel,
+  transformer: transformerModel,
+  "zener-diode": zenerDiodeModel,
+  "npn-transistor": npnModel,
+  "pnp-transistor": pnpModel,
+  "n-mosfet": nMosfetModel,
+  "p-mosfet": pMosfetModel,
+  "op-amp": opAmpModel,
+  ...LOGIC_MODELS,
 };
 
 export function getModelFactory(type: string): ModelFactory | undefined {

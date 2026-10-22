@@ -87,6 +87,12 @@ export interface Engine {
   replaceNetlist(netlist: Netlist, identity: IdentityMap): void;
   reset(start?: "zero" | "steady"): void;
   stateAt(t: number): Float32Array | null;
+  /**
+   * Logic state per node at the latest solution, one byte each (index = NodeIndex):
+   * 0 low, 1 high, 2 X, 3 Z, 255 analog node with no digital pins.
+   * Empty when the circuit has no logic parts.
+   */
+  logicStates(): Uint8Array;
   /** Rewind to the latest accepted step at or before t. False if no checkpoint covers t. */
   restartFrom(t: number): boolean;
 }

@@ -9,6 +9,8 @@ export interface Command<Ctx> {
   defaultKeys?: KeyChord[];
   /** Visible and enabled. */
   when?: (ctx: Ctx) => boolean;
+  /** Required permission (app-shell.md §6); the gate decides. Inferred from the id when absent. */
+  capability?: string;
   run(ctx: Ctx, args?: unknown): void | Promise<void>;
 }
 
@@ -67,9 +69,29 @@ export class CommandRegistry<Ctx> {
     return [...this.keys].filter(([, ids]) => ids.includes(id)).map(([c]) => c);
   }
 
+  /** Capability gate (embed modes, lessons). Commands it refuses are hidden and cannot run. */
+  private gate: ((cmd: Command<Ctx>) => boolean) | undefined;
+  private gateListeners = new Set<() => void>();
+
+  setGate(gate: ((cmd: Command<Ctx>) => boolean) | undefined): void {
+    this.gate = gate;
+    for (const l of this.gateListeners) l();
+  }
+
+  onGateChange(fn: () => void): () => void {
+    this.gateListeners.add(fn);
+    return () => this.gateListeners.delete(fn);
+  }
+
+  /** Granted by the capability set, so it should be shown. */
+  allowed(id: CommandId): boolean {
+    const c = this.commands.get(id);
+    return !!c && (this.gate?.(c) ?? true);
+  }
+
   enabled(id: CommandId): boolean {
     const c = this.commands.get(id);
-    return !!c && (c.when?.(this.ctx()) ?? true);
+    return !!c && this.allowed(id) && (c.when?.(this.ctx()) ?? true);
   }
 
   run(id: CommandId, args?: unknown): boolean {
