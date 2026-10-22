@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dmccreary/circuit-simulator/main/app/packages/lesson/src/schema/lesson-v1.schema.json
+#
+# RC charging: predict the capacitor voltage after one time constant.
+# Open it with ?lesson=rc-charging in the simulator.
+
+lesson: rc-charging
+title: Charging a capacitor
+time: 10 min
+objectives:
+  - Calculate the time constant τ = RC
+  - Predict the capacitor voltage after one time constant
+  - Recognize the 63% rule for RC charging
+concepts: [Capacitor, Time Constant, RC Circuit, Exponential Charging]
+circuit: circuits/rc-charging.circuit.json
+
+permissions:
+  edit: values
+  palette: []
+  tools: [select]
+  locked: all
+
+steps:
+  - read: |
+      A **10 V** battery charges capacitor **C1** (100 µF) through resistor
+      **R1** (10 kΩ). The capacitor starts empty, at 0 V.
+
+      The **time constant** is `τ = R × C = 10 kΩ × 100 µF = 1 s`.
+    spotlight: [R1, C1]
+
+  - id: predict
+    predict-number:
+      prompt: |
+        After **one time constant** (t = 1 s), what will the voltage across C1 be?
+      unit: V
+      blind: [readouts, traces]
+    hints:
+      - It is not 10 V. The capacitor charges quickly at first, then more and more slowly.
+      - The current falls as C1 fills, because the voltage across R1 shrinks.
+
+  - observe:
+      prompt: |
+        Press **Run**. The lesson pauses the simulation after 1 s of
+        simulated time so you can compare.
+      run-for: 1 s
+      compare-with: predict
+      show: { part: C1, quantity: voltage }
+      unit: V
+    spotlight: ["command:sim.runPause"]
+
+  - do:
+      prompt: |
+        Is the capacitor at about **63%** of the battery voltage? Make sure
+        the simulation has reached t = 1 s.
+      check:
+        value: { of: { part: C1, quantity: voltage }, equals: 6.32 V, tolerance: 4% }
+      success: Yes. After one time constant C1 is at 1 − 1/e ≈ 63% of 10 V.
+    feedback:
+      - when: { sim-time: 1.2 s }
+        say: The simulation ran well past 1 s. Press Reset, then Run again to stop at 1 s.
+
+  - explain:
+      prompt: Why does C1 not reach 10 V after one time constant?
+      options:
+        - As C1 charges, less voltage is left across R1, so the charging current shrinks.
+        - The battery runs out of charge.
+        - The resistor uses up some of the current.
+
+summary: |
+  After one time constant an RC circuit charges to about **63%** of the
+  supply. After 5τ it is above 99%.
